@@ -1887,7 +1887,7 @@ export default function Home() {
                             <div className="mt-4 h-px bg-gradient-to-r from-fuchsia-400/30 via-cyan-400/20 to-transparent" />
 
                             {event.description && (
-                              <p className="mt-4 whitespace-pre-wrap break-words text-[14px] leading-7 text-slate-300 sm:text-[15px]">
+                              <p className="mt-3 whitespace-pre-wrap break-words text-[14px] leading-6 text-slate-300 sm:mt-4 sm:text-[15px] sm:leading-7">
                                 {event.description}
                               </p>
                             )}
