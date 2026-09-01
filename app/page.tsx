@@ -2128,7 +2128,7 @@ export default function Home() {
 
             <div className="absolute bottom-5 left-[7px] top-5 w-px bg-gradient-to-b from-pink-400 via-indigo-400 via-lime-400 via-purple-400 to-yellow-300" />
 
-            <div className="space-y-10">
+            <div className="space-y-12 sm:space-y-10">
 
               {filteredEvents.map(
                 (
@@ -2203,15 +2203,15 @@ export default function Home() {
                           }`}
                         />
 
-                        <div className="mb-3 flex flex-wrap items-center gap-2">
+                        <div className="mb-4 flex flex-wrap items-center gap-1.5 sm:mb-3 sm:gap-2">
 
-                          <span className="rounded-lg border border-cyan-400/15 bg-cyan-400/10 px-2.5 py-1 text-xs font-black text-cyan-300">
+                          <span className="rounded-lg border border-cyan-400/15 bg-cyan-400/10 px-2 py-1 text-xs font-black text-cyan-300">
                             {
                               event.date
                             }
                           </span>
 
-                          <span className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-bold text-slate-300">
+                          <span className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs font-bold text-slate-300">
                             🕐{" "}
                             {
                               event.time
@@ -2227,7 +2227,7 @@ export default function Home() {
                           </span>
 
                           <span
-                            className={`rounded-lg border px-2.5 py-1 text-xs font-black ${
+                            className={`rounded-lg border px-2 py-1 text-xs font-black ${
                               event.activityType ===
                               "개인"
                                 ? "border-pink-400/20 bg-pink-400/10 text-pink-300"
@@ -2262,11 +2262,10 @@ export default function Home() {
                           }`}
                         >
 
-                          <div className="p-5 sm:p-6">
+                          <div className="p-4 sm:p-6">
 
                             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-
-                              <h2 className="min-w-0 break-words text-lg font-black leading-snug sm:text-xl">
+<h2 className="min-w-0 break-words text-[17px] font-black leading-[1.6] tracking-[-0.01em] sm:text-xl sm:leading-snug">
                                 {
                                   event.title
                                 }
@@ -2336,10 +2335,10 @@ export default function Home() {
 
                             </div>
 
-                            <div className="mt-4 h-px bg-gradient-to-r from-fuchsia-400/30 via-cyan-400/20 to-transparent" />
+                            <div className="mt-5 h-px bg-gradient-to-r from-fuchsia-400/30 via-cyan-400/20 to-transparent" />
 
                             {event.description && (
-                              <p className="mt-4 whitespace-pre-wrap break-words text-[14px] leading-7 text-slate-300 sm:text-[15px] sm:leading-8">
+                              <p className="mt-5 whitespace-pre-wrap break-words text-[14px] leading-[1.8] text-slate-300 sm:mt-4 sm:text-[15px] sm:leading-8">
                                 {
                                   event.description
                                 }
