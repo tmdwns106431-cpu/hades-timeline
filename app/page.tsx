@@ -1444,7 +1444,7 @@ export default function Home() {
 
                 <p className="mt-3 text-sm leading-6 text-slate-400 sm:text-base sm:leading-7">
                   HADES의 시작부터 지금까지,
-                  모든 순간을 기록합니다.
+                  모든 순간을 기록합니다. by 코코몽
                 </p>
 
                 <div className="mt-5 flex flex-col gap-2 sm:flex-row">
