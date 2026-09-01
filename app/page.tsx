@@ -2454,11 +2454,11 @@ export default function Home() {
             FROM HELL TO THE STAGE
           </p>
 
-          <p className="mt-2 text-[11px] text-slate-600">
-            본 사이트는 HADES 팬이 제작한
-            비공식 팬페이지입니다.
-          </p>
-
+          <p className="mt-2 text-[11px] leading-6 text-slate-600">
+  본 페이지는 HADES의 활동과 순간들을 보기 편리하게 정리하기 위해 제작된 비공식 팬페이지입니다.
+  <br />
+  어떠한 수익 창출이나 상업적 목적 없이, HADES를 응원하고 기록하기 위해 운영됩니다.
+</p>
         </footer>
 
       </div>
