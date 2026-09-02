@@ -417,12 +417,6 @@ export default function Home() {
   const is365Days =
     today === "2026-09-05";
 
-  /*
-   * =========================
-   * 로그인
-   * =========================
-   */
-
   useEffect(() => {
     document.title =
       "HADES TIMELINE";
@@ -449,12 +443,6 @@ export default function Home() {
     };
   }, []);
 
-  /*
-   * =========================
-   * 날짜
-   * =========================
-   */
-
   useEffect(() => {
     const timer =
       setInterval(() => {
@@ -468,12 +456,6 @@ export default function Home() {
     return () =>
       clearInterval(timer);
   }, []);
-
-  /*
-   * =========================
-   * 스크롤
-   * =========================
-   */
 
   useEffect(() => {
     const handleScroll = () => {
@@ -496,12 +478,6 @@ export default function Home() {
         handleScroll
       );
   }, []);
-
-  /*
-   * =========================
-   * Supabase 기록 불러오기
-   * =========================
-   */
 
   const loadEvents = async () => {
     setLoading(true);
@@ -567,12 +543,6 @@ export default function Home() {
     loadEvents();
   }, []);
 
-  /*
-   * =========================
-   * 폼 초기화
-   * =========================
-   */
-
   const resetForm = () => {
     setEditingId(null);
     setDate("");
@@ -589,12 +559,6 @@ export default function Home() {
     setActivityType("단체");
     setShowForm(false);
   };
-
-  /*
-   * =========================
-   * 수정
-   * =========================
-   */
 
   const startEdit = (
     event: Event
@@ -633,12 +597,6 @@ export default function Home() {
       behavior: "smooth",
     });
   };
-
-  /*
-   * =========================
-   * 기록 저장
-   * =========================
-   */
 
   const addEvent = async () => {
     console.log(
@@ -867,12 +825,6 @@ export default function Home() {
     }
   };
 
-  /*
-   * =========================
-   * 기록 삭제
-   * =========================
-   */
-
   const deleteEvent = async (
     event: Event
   ) => {
@@ -929,12 +881,6 @@ export default function Home() {
     }
   };
 
-  /*
-   * =========================
-   * 사진 삭제
-   * =========================
-   */
-
   const deleteEventImage =
     async (event: Event) => {
       if (!user) {
@@ -983,12 +929,6 @@ export default function Home() {
       }
     };
 
-  /*
-   * =========================
-   * 중요
-   * =========================
-   */
-
   const toggleImportant =
     async (event: Event) => {
       if (!user) {
@@ -1028,12 +968,6 @@ export default function Home() {
       );
     };
 
-  /*
-   * =========================
-   * 고정
-   * =========================
-   */
-
   const togglePinned =
     async (event: Event) => {
       if (!user) {
@@ -1072,12 +1006,6 @@ export default function Home() {
         )
       );
     };
-
-  /*
-   * =========================
-   * 필터
-   * =========================
-   */
 
   const filteredEvents =
     useMemo(() => {
@@ -1179,13 +1107,6 @@ export default function Home() {
   const isBirthdayToday =
     Boolean(birthdayToday);
 
-  /*
-   * =========================
-   * 특별 이벤트 팝업
-   * 10초 후 자동 종료
-   * =========================
-   */
-
   useEffect(() => {
     if (
       !is365Days &&
@@ -1219,10 +1140,6 @@ export default function Home() {
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-[#030712] text-white">
 
-      {/* =========================
-          SPECIAL DAY CELEBRATION
-          ========================= */}
-
       {isSpecialDay && (
         <div
           className={`pointer-events-none fixed inset-0 z-[100] overflow-hidden ${
@@ -1253,7 +1170,6 @@ export default function Home() {
 
           <div className="absolute inset-0 bg-black/[0.12]" />
 
-          {/* 폭죽 1 */}
           <div
             className={`firework firework-1 ${
               is365Days
@@ -1264,13 +1180,10 @@ export default function Home() {
             {Array.from({
               length: 12,
             }).map((_, index) => (
-              <span
-                key={index}
-              />
+              <span key={index} />
             ))}
           </div>
 
-          {/* 폭죽 2 */}
           <div
             className={`firework firework-2 ${
               is365Days
@@ -1281,13 +1194,10 @@ export default function Home() {
             {Array.from({
               length: 12,
             }).map((_, index) => (
-              <span
-                key={index}
-              />
+              <span key={index} />
             ))}
           </div>
 
-          {/* 폭죽 3 */}
           <div
             className={`firework firework-3 ${
               is365Days
@@ -1298,22 +1208,17 @@ export default function Home() {
             {Array.from({
               length: 12,
             }).map((_, index) => (
-              <span
-                key={index}
-              />
+              <span key={index} />
             ))}
           </div>
 
-          {/* 추가 폭죽 */}
           {is365Days && (
             <>
               <div className="firework firework-4 anniversary-firework">
                 {Array.from({
                   length: 12,
                 }).map((_, index) => (
-                  <span
-                    key={index}
-                  />
+                  <span key={index} />
                 ))}
               </div>
 
@@ -1321,15 +1226,12 @@ export default function Home() {
                 {Array.from({
                   length: 12,
                 }).map((_, index) => (
-                  <span
-                    key={index}
-                  />
+                  <span key={index} />
                 ))}
               </div>
             </>
           )}
 
-          {/* 중앙 축하 카드 */}
           <div
             className={`absolute inset-x-4 top-[22%] flex justify-center ${
               is365Days
@@ -1341,7 +1243,6 @@ export default function Home() {
             {is365Days ? (
               <div className="anniversary-card relative w-full max-w-xl overflow-hidden rounded-[2rem] border border-white/20 bg-[#080b18]/90 px-6 py-8 text-center shadow-[0_0_80px_rgba(168,85,247,0.35)] backdrop-blur-2xl sm:px-10 sm:py-10">
 
-                {/* 닫기 버튼 */}
                 <button
                   type="button"
                   onClick={() =>
@@ -1353,7 +1254,6 @@ export default function Home() {
                   ×
                 </button>
 
-                {/* 카드 내부 빛 */}
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(34,211,238,0.18),transparent_45%),radial-gradient(circle_at_50%_100%,rgba(168,85,247,0.18),transparent_45%)]" />
 
                 <div className="relative">
@@ -1370,7 +1270,7 @@ export default function Home() {
                     HAPPY 1st
                   </p>
 
-                  <p className="anniversary-title anniversary-title-delay text-3xl font-black tracking-[-0.03em] text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-white to-fuchsia-300 sm:text-5xl">
+                  <p className="anniversary-title anniversary-title-delay mt-3 text-3xl font-black tracking-[-0.03em] text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-white to-fuchsia-300 sm:text-5xl">
                     ANNIVERSARY
                   </p>
 
@@ -1413,7 +1313,6 @@ export default function Home() {
             ) : (
               <div className="relative rounded-3xl border border-white/15 bg-[#080b18]/90 px-6 py-5 text-center shadow-2xl backdrop-blur-xl sm:px-8 sm:py-6">
 
-                {/* 닫기 버튼 */}
                 <button
                   type="button"
                   onClick={() =>
@@ -1448,10 +1347,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* =========================
-          배경
-          ========================= */}
-
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
 
         <div
@@ -1469,10 +1364,6 @@ export default function Home() {
         <div className="absolute inset-0 opacity-30 [background-image:radial-gradient(circle,white_1px,transparent_1px)] [background-size:55px_55px]" />
 
       </div>
-
-      {/* =========================
-          HEADER
-          ========================= */}
 
       <header className="sticky top-0 z-30 border-b border-white/10 bg-[#030712]/75 backdrop-blur-2xl">
 
@@ -1585,10 +1476,6 @@ export default function Home() {
 
       <div className="mx-auto max-w-5xl px-4 py-7 sm:py-10">
 
-        {/* =========================
-            INTRO
-            ========================= */}
-
         <div className="mb-7 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.045] backdrop-blur-xl">
 
           <div className="p-5 sm:p-8">
@@ -1643,7 +1530,7 @@ export default function Home() {
 
               </div>
 
-              <div className="rounded-2xl border border-purple-400/20 bg-purple-500/10 p-5 text-center sm:min-w-[230px]">
+              <div className="hades-since-card rounded-2xl border border-cyan-300/50 bg-purple-500/10 p-5 text-center sm:min-w-[230px]">
 
                 <p className="text-[10px] font-black tracking-[0.3em] text-purple-300">
                   HADES SINCE
@@ -1665,10 +1552,6 @@ export default function Home() {
 
             </div>
           </div>
-
-          {/* =========================
-              생일
-              ========================= */}
 
           <div className="border-t border-white/10 bg-black/10 p-5 sm:p-7">
 
@@ -1739,10 +1622,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* =========================
-            STATS
-            ========================= */}
-
         <div className="mb-7 grid grid-cols-3 gap-2 sm:gap-4">
 
           <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-3 text-center sm:p-5">
@@ -1782,10 +1661,6 @@ export default function Home() {
           </div>
 
         </div>
-
-        {/* =========================
-            RECENT HIGHLIGHTS
-            ========================= */}
 
         {pinnedEvents.length > 0 && (
           <section className="mb-7">
@@ -1878,10 +1753,6 @@ export default function Home() {
             </div>
           </section>
         )}
-
-        {/* =========================
-            FORM
-            ========================= */}
 
         {showForm && user && (
           <div className="mb-8 overflow-hidden rounded-3xl border border-purple-400/20 bg-[#0b0a18]/90 backdrop-blur-xl">
@@ -2205,10 +2076,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* =========================
-            SEARCH
-            ========================= */}
-
         <div className="mb-4">
 
           <input
@@ -2224,10 +2091,6 @@ export default function Home() {
           />
 
         </div>
-
-        {/* =========================
-            FILTER
-            ========================= */}
 
         <div className="mb-8 rounded-3xl border border-white/10 bg-white/[0.045] p-4 backdrop-blur-xl">
 
@@ -2346,10 +2209,6 @@ export default function Home() {
 
           </div>
         </div>
-
-        {/* =========================
-            TIMELINE
-            ========================= */}
 
         {loading ? (
           <div className="rounded-3xl border border-white/10 bg-white/[0.045] px-5 py-16 text-center">
@@ -2698,10 +2557,6 @@ export default function Home() {
           </section>
         )}
 
-        {/* =========================
-            FOOTER
-            ========================= */}
-
         <footer className="mt-14 border-t border-white/10 py-8 text-center">
 
           <p className="text-xs font-black tracking-[0.25em] text-slate-500">
@@ -2718,10 +2573,6 @@ export default function Home() {
 
       </div>
 
-      {/* =========================
-          TOP BUTTON
-          ========================= */}
-
       {showTopButton && (
         <button
           type="button"
@@ -2737,13 +2588,32 @@ export default function Home() {
         </button>
       )}
 
-      {/* =========================
-          FIREWORK + ANNIVERSARY CSS
-          ========================= */}
-
       <style jsx>{`
 
-        /* 기본 폭죽 */
+        .hades-since-card {
+          box-shadow:
+            0 0 22px rgba(34, 211, 238, 0.28),
+            0 0 45px rgba(34, 211, 238, 0.16),
+            inset 0 0 18px rgba(34, 211, 238, 0.06);
+          animation: hades-since-glow 3s ease-in-out infinite;
+        }
+
+        @keyframes hades-since-glow {
+          0%,
+          100% {
+            box-shadow:
+              0 0 22px rgba(34, 211, 238, 0.25),
+              0 0 45px rgba(34, 211, 238, 0.13),
+              inset 0 0 18px rgba(34, 211, 238, 0.05);
+          }
+
+          50% {
+            box-shadow:
+              0 0 30px rgba(34, 211, 238, 0.45),
+              0 0 60px rgba(34, 211, 238, 0.25),
+              inset 0 0 22px rgba(34, 211, 238, 0.10);
+          }
+        }
 
         .firework {
           position: absolute;
@@ -2769,63 +2639,51 @@ export default function Home() {
         }
 
         .firework span:nth-child(1) {
-          transform: translate(-50%, 0)
-            rotate(0deg);
+          transform: translate(-50%, 0) rotate(0deg);
         }
 
         .firework span:nth-child(2) {
-          transform: translate(-50%, 0)
-            rotate(30deg);
+          transform: translate(-50%, 0) rotate(30deg);
         }
 
         .firework span:nth-child(3) {
-          transform: translate(-50%, 0)
-            rotate(60deg);
+          transform: translate(-50%, 0) rotate(60deg);
         }
 
         .firework span:nth-child(4) {
-          transform: translate(-50%, 0)
-            rotate(90deg);
+          transform: translate(-50%, 0) rotate(90deg);
         }
 
         .firework span:nth-child(5) {
-          transform: translate(-50%, 0)
-            rotate(120deg);
+          transform: translate(-50%, 0) rotate(120deg);
         }
 
         .firework span:nth-child(6) {
-          transform: translate(-50%, 0)
-            rotate(150deg);
+          transform: translate(-50%, 0) rotate(150deg);
         }
 
         .firework span:nth-child(7) {
-          transform: translate(-50%, 0)
-            rotate(180deg);
+          transform: translate(-50%, 0) rotate(180deg);
         }
 
         .firework span:nth-child(8) {
-          transform: translate(-50%, 0)
-            rotate(210deg);
+          transform: translate(-50%, 0) rotate(210deg);
         }
 
         .firework span:nth-child(9) {
-          transform: translate(-50%, 0)
-            rotate(240deg);
+          transform: translate(-50%, 0) rotate(240deg);
         }
 
         .firework span:nth-child(10) {
-          transform: translate(-50%, 0)
-            rotate(270deg);
+          transform: translate(-50%, 0) rotate(270deg);
         }
 
         .firework span:nth-child(11) {
-          transform: translate(-50%, 0)
-            rotate(300deg);
+          transform: translate(-50%, 0) rotate(300deg);
         }
 
         .firework span:nth-child(12) {
-          transform: translate(-50%, 0)
-            rotate(330deg);
+          transform: translate(-50%, 0) rotate(330deg);
         }
 
         .firework-1 {
@@ -2878,10 +2736,6 @@ export default function Home() {
             transform: scale(1.35);
           }
         }
-
-        /* =========================
-           1주년 전용 연출
-           ========================= */
 
         .anniversary-celebration {
           animation: anniversary-fade-in 0.45s ease-out forwards;
@@ -2960,8 +2814,6 @@ export default function Home() {
         .anniversary-firework {
           animation-duration: 1.9s;
         }
-
-        /* 파티클 */
 
         .anniversary-particle {
           position: absolute;
