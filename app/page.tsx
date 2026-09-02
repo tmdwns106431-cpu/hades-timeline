@@ -411,6 +411,9 @@ export default function Home() {
   const [highlightedEventId, setHighlightedEventId] =
     useState<number | null>(null);
 
+  const [showSpecialCelebration, setShowSpecialCelebration] =
+    useState(false);
+
   const is365Days =
     today === "2026-09-05";
 
@@ -645,7 +648,7 @@ export default function Home() {
 
     if (!user) {
       alert(
-        "운영자 로그인 후 이용해주세요."
+        "관리자 로그인 후 이용해주세요."
       );
       return;
     }
@@ -662,10 +665,6 @@ export default function Home() {
     }
 
     try {
-      /*
-       * 수정
-       */
-
       if (editingId !== null) {
         const current =
           events.find(
@@ -767,10 +766,6 @@ export default function Home() {
         resetForm();
         return;
       }
-
-      /*
-       * 새 기록
-       */
 
       const { data, error } =
         await supabase
@@ -883,7 +878,7 @@ export default function Home() {
   ) => {
     if (!user) {
       alert(
-        "운영자 로그인 후 이용해주세요."
+        "관리자 로그인 후 이용해주세요."
       );
       return;
     }
@@ -944,7 +939,7 @@ export default function Home() {
     async (event: Event) => {
       if (!user) {
         alert(
-          "운영자 로그인 후 이용해주세요."
+          "관리자 로그인 후 이용해주세요."
         );
         return;
       }
@@ -998,7 +993,7 @@ export default function Home() {
     async (event: Event) => {
       if (!user) {
         alert(
-          "운영자 로그인 후 이용해주세요."
+          "관리자 로그인 후 이용해주세요."
         );
         return;
       }
@@ -1043,7 +1038,7 @@ export default function Home() {
     async (event: Event) => {
       if (!user) {
         alert(
-          "운영자 로그인 후 이용해주세요."
+          "관리자 로그인 후 이용해주세요."
         );
         return;
       }
@@ -1184,9 +1179,39 @@ export default function Home() {
   const isBirthdayToday =
     Boolean(birthdayToday);
 
+  /*
+   * =========================
+   * 특별 이벤트 팝업
+   * 10초 후 자동 종료
+   * =========================
+   */
+
+  useEffect(() => {
+    if (
+      !is365Days &&
+      !isBirthdayToday
+    ) {
+      setShowSpecialCelebration(false);
+      return;
+    }
+
+    setShowSpecialCelebration(true);
+
+    const timer =
+      window.setTimeout(() => {
+        setShowSpecialCelebration(false);
+      }, 10000);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [
+    is365Days,
+    isBirthdayToday,
+  ]);
+
   const isSpecialDay =
-    is365Days ||
-    isBirthdayToday;
+    showSpecialCelebration;
 
   const hadesDays =
     getHadesDays();
@@ -1195,15 +1220,47 @@ export default function Home() {
     <main className="relative min-h-screen overflow-x-hidden bg-[#030712] text-white">
 
       {/* =========================
-          SPECIAL DAY FIREWORKS
+          SPECIAL DAY CELEBRATION
           ========================= */}
 
       {isSpecialDay && (
-        <div className="pointer-events-none fixed inset-0 z-[100] overflow-hidden">
+        <div
+          className={`pointer-events-none fixed inset-0 z-[100] overflow-hidden ${
+            is365Days
+              ? "anniversary-celebration"
+              : ""
+          }`}
+        >
 
-          <div className="absolute inset-0 bg-black/[0.08]" />
+          {is365Days && (
+            <>
+              <div className="anniversary-glow absolute inset-0" />
 
-          <div className="firework firework-1">
+              <div className="anniversary-light absolute left-1/2 top-1/2 h-[10px] w-[10px] -translate-x-1/2 -translate-y-1/2 rounded-full" />
+
+              <div className="anniversary-particles absolute inset-0">
+                {Array.from({
+                  length: 28,
+                }).map((_, index) => (
+                  <span
+                    key={index}
+                    className={`anniversary-particle anniversary-particle-${index + 1}`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+
+          <div className="absolute inset-0 bg-black/[0.12]" />
+
+          {/* 폭죽 1 */}
+          <div
+            className={`firework firework-1 ${
+              is365Days
+                ? "anniversary-firework"
+                : ""
+            }`}
+          >
             {Array.from({
               length: 12,
             }).map((_, index) => (
@@ -1213,7 +1270,14 @@ export default function Home() {
             ))}
           </div>
 
-          <div className="firework firework-2">
+          {/* 폭죽 2 */}
+          <div
+            className={`firework firework-2 ${
+              is365Days
+                ? "anniversary-firework"
+                : ""
+            }`}
+          >
             {Array.from({
               length: 12,
             }).map((_, index) => (
@@ -1223,7 +1287,14 @@ export default function Home() {
             ))}
           </div>
 
-          <div className="firework firework-3">
+          {/* 폭죽 3 */}
+          <div
+            className={`firework firework-3 ${
+              is365Days
+                ? "anniversary-firework"
+                : ""
+            }`}
+          >
             {Array.from({
               length: 12,
             }).map((_, index) => (
@@ -1233,79 +1304,146 @@ export default function Home() {
             ))}
           </div>
 
-          <div className="absolute inset-x-4 top-[24%] flex justify-center">
+          {/* 추가 폭죽 */}
+          {is365Days && (
+            <>
+              <div className="firework firework-4 anniversary-firework">
+                {Array.from({
+                  length: 12,
+                }).map((_, index) => (
+                  <span
+                    key={index}
+                  />
+                ))}
+              </div>
 
-            <div className="rounded-3xl border border-white/15 bg-[#080b18]/90 px-6 py-5 text-center shadow-2xl backdrop-blur-xl sm:px-8 sm:py-6">
+              <div className="firework firework-5 anniversary-firework">
+                {Array.from({
+                  length: 12,
+                }).map((_, index) => (
+                  <span
+                    key={index}
+                  />
+                ))}
+              </div>
+            </>
+          )}
 
-              {is365Days ? (
-                <>
-                  <p className="text-[10px] font-black tracking-[0.35em] text-cyan-300">
+          {/* 중앙 축하 카드 */}
+          <div
+            className={`absolute inset-x-4 top-[22%] flex justify-center ${
+              is365Days
+                ? "anniversary-card-wrap"
+                : ""
+            }`}
+          >
+
+            {is365Days ? (
+              <div className="anniversary-card relative w-full max-w-xl overflow-hidden rounded-[2rem] border border-white/20 bg-[#080b18]/90 px-6 py-8 text-center shadow-[0_0_80px_rgba(168,85,247,0.35)] backdrop-blur-2xl sm:px-10 sm:py-10">
+
+                {/* 닫기 버튼 */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowSpecialCelebration(false)
+                  }
+                  className="pointer-events-auto absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10 text-xl font-bold leading-none text-white/80 shadow-lg backdrop-blur-md transition hover:bg-white/20 hover:text-white sm:right-4 sm:top-4"
+                  aria-label="닫기"
+                >
+                  ×
+                </button>
+
+                {/* 카드 내부 빛 */}
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(34,211,238,0.18),transparent_45%),radial-gradient(circle_at_50%_100%,rgba(168,85,247,0.18),transparent_45%)]" />
+
+                <div className="relative">
+
+                  <div className="anniversary-crown text-4xl sm:text-5xl">
+                    ✦
+                  </div>
+
+                  <p className="mt-2 text-[10px] font-black tracking-[0.45em] text-cyan-300 sm:text-xs">
                     HADES ANNIVERSARY
                   </p>
 
-                  <p className="mt-2 text-3xl font-black sm:text-5xl">
-                    1ST ANNIVERSARY
+                  <p className="anniversary-title mt-3 text-4xl font-black tracking-[-0.04em] sm:text-6xl">
+                    HAPPY 1st
                   </p>
 
-                  <p className="mt-2 text-xs font-bold text-slate-400 sm:text-sm">
-                    HADES와 함께한 1년
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="text-[10px] font-black tracking-[0.35em] text-pink-300">
-                    HAPPY BIRTHDAY
+                  <p className="anniversary-title anniversary-title-delay text-3xl font-black tracking-[-0.03em] text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-white to-fuchsia-300 sm:text-5xl">
+                    ANNIVERSARY
                   </p>
 
-                  <p className="mt-2 text-3xl font-black sm:text-5xl">
-                    {birthdayToday?.name}
+                  <div className="anniversary-days mt-5">
+                    <span className="text-6xl font-black tracking-[-0.05em] text-white drop-shadow-[0_0_25px_rgba(255,255,255,0.35)] sm:text-8xl">
+                      365
+                    </span>
+
+                    <span className="ml-2 text-2xl font-black tracking-widest text-cyan-300 sm:text-4xl">
+                      DAYS
+                    </span>
+                  </div>
+
+                  <div className="mx-auto mt-5 h-px w-32 bg-gradient-to-r from-transparent via-white/50 to-transparent" />
+
+                  <p className="mt-5 text-sm font-bold text-slate-300 sm:text-base">
+                    HADES와 함께한 첫 번째 1년
                   </p>
 
-                  <p className="mt-2 text-xs font-bold text-slate-400 sm:text-sm">
-                    생일을 축하합니다
+                  <p className="mt-2 text-[11px] font-medium text-slate-500 sm:text-xs">
+                    FROM HELL TO THE STAGE
                   </p>
-                </>
-              )}
 
-              <div className="mt-3 text-xl tracking-[0.5em]">
-                ✦ ✦ ✦
+                  <div className="mt-6 flex justify-center gap-5 text-xl sm:text-2xl">
+                    <span className="anniversary-star">
+                      ✦
+                    </span>
+
+                    <span className="anniversary-star anniversary-star-2">
+                      ✦
+                    </span>
+
+                    <span className="anniversary-star anniversary-star-3">
+                      ✦
+                    </span>
+                  </div>
+
+                </div>
               </div>
+            ) : (
+              <div className="relative rounded-3xl border border-white/15 bg-[#080b18]/90 px-6 py-5 text-center shadow-2xl backdrop-blur-xl sm:px-8 sm:py-6">
 
-            </div>
-          </div>
-        </div>
-      )}
+                {/* 닫기 버튼 */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowSpecialCelebration(false)
+                  }
+                  className="pointer-events-auto absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10 text-xl font-bold leading-none text-white/80 shadow-lg backdrop-blur-md transition hover:bg-white/20 hover:text-white"
+                  aria-label="닫기"
+                >
+                  ×
+                </button>
 
-      {/* =========================
-          365 DAYS
-          ========================= */}
+                <p className="text-[10px] font-black tracking-[0.35em] text-pink-300">
+                  HAPPY BIRTHDAY
+                </p>
 
-      {is365Days && (
-        <div className="pointer-events-none fixed inset-0 z-[90] overflow-hidden">
+                <p className="mt-2 text-3xl font-black sm:text-5xl">
+                  {birthdayToday?.name}
+                </p>
 
-          <div className="absolute inset-0 bg-purple-500/[0.08] backdrop-blur-[1px]" />
+                <p className="mt-2 text-xs font-bold text-slate-400 sm:text-sm">
+                  생일을 축하합니다
+                </p>
 
-          <div className="absolute inset-x-4 top-[38%] mx-auto max-w-xl text-center">
+                <div className="mt-3 text-xl tracking-[0.5em]">
+                  ✦ ✦ ✦
+                </div>
 
-            <div className="rounded-[2rem] border border-white/15 bg-[#080b18]/90 px-6 py-8 shadow-2xl backdrop-blur-xl">
-
-              <p className="text-xs font-black tracking-[0.4em] text-cyan-300">
-                FROM HELL TO THE STAGE
-              </p>
-
-              <div className="mt-3 text-5xl font-black sm:text-7xl">
-                365 DAYS
               </div>
+            )}
 
-              <p className="mt-3 text-sm font-bold text-slate-400">
-                HADES와 함께한 1년
-              </p>
-
-              <div className="mt-5 text-2xl">
-                ✦ ✦ ✦
-              </div>
-
-            </div>
           </div>
         </div>
       )}
@@ -1369,7 +1507,7 @@ export default function Home() {
             </div>
 
             <p className="mt-3 text-xs font-medium text-slate-400 sm:text-sm">
-              The Journey of HADES
+              The Journey of HADES by.코코몽
             </p>
 
             {user ? (
@@ -1381,7 +1519,7 @@ export default function Home() {
                 }}
                 className="mt-3 rounded-xl border border-pink-400/20 bg-pink-400/10 px-4 py-2 text-xs font-bold text-pink-300"
               >
-                운영자 로그아웃
+                관리자 로그아웃
               </button>
             ) : (
               <button
@@ -1389,12 +1527,12 @@ export default function Home() {
                 onClick={async () => {
                   const email =
                     window.prompt(
-                      "운영자 이메일"
+                      "관리자 이메일"
                     );
 
                   const password =
                     window.prompt(
-                      "운영자 비밀번호"
+                      "관리자 비밀번호"
                     );
 
                   if (
@@ -1420,7 +1558,7 @@ export default function Home() {
                 }}
                 className="mt-3 rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-xs font-bold text-cyan-300"
               >
-                🔐 운영자 로그인
+                🔐 관리자 로그인
               </button>
             )}
 
@@ -1464,12 +1602,12 @@ export default function Home() {
                 </p>
 
                 <h2 className="mt-2 text-2xl font-black sm:text-3xl">
-                  Every Moment, Every Stage
+                  "From Hell to the Stage"
                 </h2>
 
                 <p className="mt-3 text-sm leading-6 text-slate-400 sm:text-base sm:leading-7">
                   HADES의 시작부터 지금까지,
-                  모든 순간을 기록합니다. by 코코몽
+                  모든 순간을 기록합니다.
                 </p>
 
                 <div className="mt-5 flex flex-col gap-2 sm:flex-row">
@@ -1651,19 +1789,25 @@ export default function Home() {
 
         {pinnedEvents.length > 0 && (
           <section className="mb-7">
+
             <div className="mb-4 flex items-end justify-between gap-3 px-1">
+
               <div>
+
                 <p className="text-[10px] font-black tracking-[0.28em] text-yellow-300">
                   RECENT HIGHLIGHTS
                 </p>
+
                 <h2 className="mt-1 text-xl font-black sm:text-2xl">
                   HADES의 주요 순간
                 </h2>
+
               </div>
 
               <span className="hidden text-[10px] font-bold text-slate-500 sm:block">
                 고정된 기록에서 자동으로 표시됩니다
               </span>
+
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -1888,8 +2032,6 @@ export default function Home() {
 
                 </div>
               </div>
-
-              {/* 이미지 */}
 
               <div className="mt-5">
 
@@ -2596,10 +2738,13 @@ export default function Home() {
       )}
 
       {/* =========================
-          FIREWORK CSS
+          FIREWORK + ANNIVERSARY CSS
           ========================= */}
 
       <style jsx>{`
+
+        /* 기본 폭죽 */
+
         .firework {
           position: absolute;
           width: 8px;
@@ -2701,6 +2846,18 @@ export default function Home() {
           animation-delay: 1.6s;
         }
 
+        .firework-4 {
+          left: 8%;
+          top: 48%;
+          animation-delay: 0.4s;
+        }
+
+        .firework-5 {
+          right: 8%;
+          top: 48%;
+          animation-delay: 1.2s;
+        }
+
         @keyframes firework-burst {
           0% {
             opacity: 0;
@@ -2722,7 +2879,303 @@ export default function Home() {
           }
         }
 
+        /* =========================
+           1주년 전용 연출
+           ========================= */
+
+        .anniversary-celebration {
+          animation: anniversary-fade-in 0.45s ease-out forwards;
+        }
+
+        .anniversary-glow {
+          background:
+            radial-gradient(
+              circle at 50% 45%,
+              rgba(255,255,255,0.14),
+              transparent 18%
+            ),
+            radial-gradient(
+              circle at 50% 45%,
+              rgba(34,211,238,0.14),
+              transparent 42%
+            ),
+            radial-gradient(
+              circle at 50% 45%,
+              rgba(168,85,247,0.13),
+              transparent 65%
+            );
+          animation: anniversary-glow-pulse 2.8s ease-in-out infinite;
+        }
+
+        .anniversary-light {
+          box-shadow:
+            0 0 40px 20px rgba(255,255,255,0.8),
+            0 0 100px 50px rgba(34,211,238,0.45),
+            0 0 180px 90px rgba(168,85,247,0.3);
+          animation: anniversary-light-burst 1.8s ease-out forwards;
+        }
+
+        .anniversary-card-wrap {
+          animation: anniversary-card-enter 0.9s cubic-bezier(.16,1,.3,1) forwards;
+        }
+
+        .anniversary-card {
+          animation: anniversary-card-glow 2.5s ease-in-out infinite;
+        }
+
+        .anniversary-title {
+          animation: anniversary-title-enter 0.8s cubic-bezier(.16,1,.3,1) both;
+        }
+
+        .anniversary-title-delay {
+          animation-delay: 0.18s;
+        }
+
+        .anniversary-days {
+          animation: anniversary-days-enter 1s cubic-bezier(.16,1,.3,1) 0.35s both;
+        }
+
+        .anniversary-crown {
+          animation: anniversary-star-pop 1.2s ease-out 0.1s both;
+          text-shadow:
+            0 0 12px rgba(255,255,255,0.9),
+            0 0 35px rgba(34,211,238,0.8);
+        }
+
+        .anniversary-star {
+          animation: anniversary-star-float 1.8s ease-in-out infinite;
+          text-shadow:
+            0 0 10px rgba(255,255,255,0.9),
+            0 0 25px rgba(34,211,238,0.7);
+        }
+
+        .anniversary-star-2 {
+          animation-delay: 0.3s;
+        }
+
+        .anniversary-star-3 {
+          animation-delay: 0.6s;
+        }
+
+        .anniversary-firework {
+          animation-duration: 1.9s;
+        }
+
+        /* 파티클 */
+
+        .anniversary-particle {
+          position: absolute;
+          left: 50%;
+          top: 46%;
+          width: 4px;
+          height: 4px;
+          border-radius: 9999px;
+          background: white;
+          box-shadow:
+            0 0 8px rgba(255,255,255,0.9),
+            0 0 18px rgba(34,211,238,0.7);
+          animation:
+            anniversary-particle-burst
+            2.4s
+            cubic-bezier(.16,1,.3,1)
+            forwards;
+        }
+
+        .anniversary-particle:nth-child(3n) {
+          width: 3px;
+          height: 8px;
+          border-radius: 2px;
+        }
+
+        .anniversary-particle:nth-child(4n) {
+          width: 6px;
+          height: 6px;
+        }
+
+        .anniversary-particle-1 { --x: -42vw; --y: -38vh; animation-delay: .05s; }
+        .anniversary-particle-2 { --x: 39vw; --y: -32vh; animation-delay: .08s; }
+        .anniversary-particle-3 { --x: -30vw; --y: -25vh; animation-delay: .11s; }
+        .anniversary-particle-4 { --x: 27vw; --y: -39vh; animation-delay: .14s; }
+        .anniversary-particle-5 { --x: -48vw; --y: -5vh; animation-delay: .17s; }
+        .anniversary-particle-6 { --x: 47vw; --y: -8vh; animation-delay: .20s; }
+        .anniversary-particle-7 { --x: -38vw; --y: 18vh; animation-delay: .23s; }
+        .anniversary-particle-8 { --x: 42vw; --y: 21vh; animation-delay: .26s; }
+        .anniversary-particle-9 { --x: -25vw; --y: 33vh; animation-delay: .29s; }
+        .anniversary-particle-10 { --x: 30vw; --y: 34vh; animation-delay: .32s; }
+        .anniversary-particle-11 { --x: -14vw; --y: -40vh; animation-delay: .35s; }
+        .anniversary-particle-12 { --x: 15vw; --y: -37vh; animation-delay: .38s; }
+        .anniversary-particle-13 { --x: -50vw; --y: 28vh; animation-delay: .41s; }
+        .anniversary-particle-14 { --x: 50vw; --y: 29vh; animation-delay: .44s; }
+        .anniversary-particle-15 { --x: -20vw; --y: 42vh; animation-delay: .47s; }
+        .anniversary-particle-16 { --x: 19vw; --y: 43vh; animation-delay: .50s; }
+        .anniversary-particle-17 { --x: -34vw; --y: 5vh; animation-delay: .53s; }
+        .anniversary-particle-18 { --x: 35vw; --y: 7vh; animation-delay: .56s; }
+        .anniversary-particle-19 { --x: -9vw; --y: -28vh; animation-delay: .59s; }
+        .anniversary-particle-20 { --x: 9vw; --y: -30vh; animation-delay: .62s; }
+        .anniversary-particle-21 { --x: -45vw; --y: -20vh; animation-delay: .65s; }
+        .anniversary-particle-22 { --x: 45vw; --y: -19vh; animation-delay: .68s; }
+        .anniversary-particle-23 { --x: -44vw; --y: 40vh; animation-delay: .71s; }
+        .anniversary-particle-24 { --x: 43vw; --y: 39vh; animation-delay: .74s; }
+        .anniversary-particle-25 { --x: -5vw; --y: 38vh; animation-delay: .77s; }
+        .anniversary-particle-26 { --x: 6vw; --y: 40vh; animation-delay: .80s; }
+        .anniversary-particle-27 { --x: -16vw; --y: 18vh; animation-delay: .83s; }
+        .anniversary-particle-28 { --x: 17vw; --y: 20vh; animation-delay: .86s; }
+
+        @keyframes anniversary-fade-in {
+          from {
+            opacity: 0;
+          }
+
+          to {
+            opacity: 1;
+          }
+        }
+
+        @keyframes anniversary-glow-pulse {
+          0%,
+          100% {
+            opacity: 0.55;
+            transform: scale(0.95);
+          }
+
+          50% {
+            opacity: 1;
+            transform: scale(1.08);
+          }
+        }
+
+        @keyframes anniversary-light-burst {
+          0% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.1);
+          }
+
+          15% {
+            opacity: 1;
+          }
+
+          100% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(28);
+          }
+        }
+
+        @keyframes anniversary-card-enter {
+          0% {
+            opacity: 0;
+            transform: translateY(35px) scale(0.72);
+          }
+
+          55% {
+            opacity: 1;
+            transform: translateY(-5px) scale(1.04);
+          }
+
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        @keyframes anniversary-card-glow {
+          0%,
+          100% {
+            box-shadow:
+              0 0 50px rgba(168,85,247,0.25),
+              0 0 100px rgba(34,211,238,0.08);
+          }
+
+          50% {
+            box-shadow:
+              0 0 75px rgba(168,85,247,0.4),
+              0 0 130px rgba(34,211,238,0.16);
+          }
+        }
+
+        @keyframes anniversary-title-enter {
+          0% {
+            opacity: 0;
+            transform: translateY(18px) scale(0.88);
+          }
+
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        @keyframes anniversary-days-enter {
+          0% {
+            opacity: 0;
+            transform: scale(0.5);
+          }
+
+          65% {
+            opacity: 1;
+            transform: scale(1.08);
+          }
+
+          100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        @keyframes anniversary-star-pop {
+          0% {
+            opacity: 0;
+            transform: scale(0) rotate(-90deg);
+          }
+
+          70% {
+            opacity: 1;
+            transform: scale(1.25) rotate(10deg);
+          }
+
+          100% {
+            opacity: 1;
+            transform: scale(1) rotate(0deg);
+          }
+        }
+
+        @keyframes anniversary-star-float {
+          0%,
+          100% {
+            opacity: 0.55;
+            transform: translateY(0) scale(0.9);
+          }
+
+          50% {
+            opacity: 1;
+            transform: translateY(-5px) scale(1.2);
+          }
+        }
+
+        @keyframes anniversary-particle-burst {
+          0% {
+            opacity: 0;
+            transform:
+              translate(-50%, -50%)
+              scale(0);
+          }
+
+          15% {
+            opacity: 1;
+          }
+
+          100% {
+            opacity: 0;
+            transform:
+              translate(
+                calc(-50% + var(--x)),
+                calc(-50% + var(--y))
+              )
+              scale(1);
+          }
+        }
+
         @media (max-width: 640px) {
+
           .firework span {
             width: 2px;
             height: 48px;
@@ -2742,7 +3195,28 @@ export default function Home() {
             left: 50%;
             top: 16%;
           }
+
+          .firework-4 {
+            left: 7%;
+            top: 50%;
+          }
+
+          .firework-5 {
+            right: 7%;
+            top: 50%;
+          }
+
+          .anniversary-card {
+            padding-left: 1.25rem;
+            padding-right: 1.25rem;
+          }
+
+          .anniversary-particle {
+            width: 3px;
+            height: 3px;
+          }
         }
+
       `}</style>
 
     </main>
