@@ -201,10 +201,6 @@ function sortEvents(
   order: "newest" | "oldest"
 ) {
   return [...events].sort((a, b) => {
-    if (Boolean(a.pinned) !== Boolean(b.pinned)) {
-      return a.pinned ? -1 : 1;
-    }
-
     const aValue = `${a.date} ${a.time}`;
     const bValue = `${b.date} ${b.time}`;
 
@@ -411,6 +407,9 @@ export default function Home() {
 
   const [showTopButton, setShowTopButton] =
     useState(false);
+
+  const [highlightedEventId, setHighlightedEventId] =
+    useState<number | null>(null);
 
   const is365Days =
     today === "2026-09-05";
@@ -1141,6 +1140,32 @@ export default function Home() {
       (event) => event.important
     ).length;
 
+  const pinnedEvents = useMemo(() => {
+    return sortEvents(
+      events.filter((event) => event.pinned),
+      "newest"
+    ).slice(0, 3);
+  }, [events]);
+
+  const scrollToEvent = (id: number) => {
+    setSearch("");
+    setFilter("all");
+    setHighlightedEventId(id);
+
+    window.setTimeout(() => {
+      document
+        .getElementById(`event-${id}`)
+        ?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+    }, 80);
+
+    window.setTimeout(() => {
+      setHighlightedEventId(null);
+    }, 1800);
+  };
+
   const birthdayData =
     members.map((member) => ({
       ...member,
@@ -1619,6 +1644,96 @@ export default function Home() {
           </div>
 
         </div>
+
+        {/* =========================
+            RECENT HIGHLIGHTS
+            ========================= */}
+
+        {pinnedEvents.length > 0 && (
+          <section className="mb-7">
+            <div className="mb-4 flex items-end justify-between gap-3 px-1">
+              <div>
+                <p className="text-[10px] font-black tracking-[0.28em] text-yellow-300">
+                  RECENT HIGHLIGHTS
+                </p>
+                <h2 className="mt-1 text-xl font-black sm:text-2xl">
+                  HADES의 주요 순간
+                </h2>
+              </div>
+
+              <span className="hidden text-[10px] font-bold text-slate-500 sm:block">
+                고정된 기록에서 자동으로 표시됩니다
+              </span>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+
+              {pinnedEvents.map((event) => (
+                <button
+                  key={event.id}
+                  type="button"
+                  onClick={() =>
+                    scrollToEvent(event.id)
+                  }
+                  className="group overflow-hidden rounded-2xl border border-yellow-400/15 bg-[#080b18]/75 text-left backdrop-blur-xl transition duration-200 hover:-translate-y-0.5 hover:border-yellow-400/30 hover:bg-yellow-400/[0.06]"
+                >
+
+                  <div className="border-b border-white/10 px-4 py-3">
+
+                    <div className="flex items-center justify-between gap-2">
+
+                      <span className="rounded-lg border border-yellow-400/20 bg-yellow-400/10 px-2 py-1 text-[10px] font-black text-yellow-300">
+                        📌 HIGHLIGHT
+                      </span>
+
+                      <span className="text-[10px] font-bold text-slate-500">
+                        {event.date}
+                      </span>
+
+                    </div>
+
+                  </div>
+
+                  <div className="p-4">
+
+                    <div className="mb-2 flex flex-wrap gap-1.5">
+
+                      <span
+                        className={`rounded-md border px-2 py-0.5 text-[10px] font-black ${categoryStyle[event.category]}`}
+                      >
+                        {event.category}
+                      </span>
+
+                      <span className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-bold text-slate-400">
+                        {event.activityType}
+                      </span>
+
+                    </div>
+
+                    <h3 className="break-words text-sm font-black leading-6 text-white transition group-hover:text-cyan-200">
+                      {event.title}
+                    </h3>
+
+                    {event.description && (
+                      <p className="mt-2 break-words text-xs leading-5 text-slate-500">
+                        {event.description.length > 70
+                          ? `${event.description.slice(0, 70)}...`
+                          : event.description}
+                      </p>
+                    )}
+
+                    <p className="mt-3 text-[10px] font-black text-cyan-400/70">
+                      기록으로 이동 →
+                    </p>
+
+                  </div>
+
+                </button>
+              ))}
+
+            </div>
+          </section>
+        )}
 
         {/* =========================
             FORM
@@ -2171,6 +2286,7 @@ export default function Home() {
                       key={
                         event.id
                       }
+                      id={`event-${event.id}`}
                     >
 
                       {showMonth && (
@@ -2240,12 +2356,6 @@ export default function Home() {
                               : "👥 단체"}
                           </span>
 
-                          {event.pinned && (
-                            <span className="rounded-lg border border-yellow-400/20 bg-yellow-400/10 px-2.5 py-1 text-xs font-black text-yellow-300">
-                              📌 고정
-                            </span>
-                          )}
-
                           {event.important && (
                             <span className="rounded-lg border border-amber-400/20 bg-amber-400/10 px-2.5 py-1 text-xs font-black text-amber-300">
                               ⭐ 중요
@@ -2255,17 +2365,20 @@ export default function Home() {
                         </div>
 
                         <div
-                          className={`overflow-hidden rounded-3xl border bg-[#080b18]/80 ${
-                            event.important
-                              ? "border-amber-400/30"
-                              : "border-white/10"
+                          className={`overflow-hidden rounded-3xl border bg-[#080b18]/80 transition-all duration-500 ${
+                            highlightedEventId === event.id
+                              ? "border-cyan-300/70 ring-2 ring-cyan-400/40 shadow-[0_0_35px_rgba(34,211,238,0.22)]"
+                              : event.important
+                                ? "border-amber-400/30"
+                                : "border-white/10"
                           }`}
                         >
 
                           <div className="p-4 sm:p-6">
 
                             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-<h2 className="min-w-0 break-words text-[17px] font-black leading-[1.6] tracking-[-0.01em] sm:text-xl sm:leading-snug">
+
+                              <h2 className="min-w-0 break-words text-[17px] font-black leading-[1.6] tracking-[-0.01em] sm:text-xl sm:leading-snug">
                                 {
                                   event.title
                                 }
@@ -2454,10 +2567,11 @@ export default function Home() {
           </p>
 
           <p className="mt-2 text-[11px] leading-6 text-slate-600">
-  본 페이지는 HADES의 활동과 순간들을 보기 편리하게 정리하기 위해 제작된 비공식 팬페이지입니다.
-  <br />
-  어떠한 수익 창출이나 상업적 목적 없이, HADES를 응원하고 기록하기 위해 운영됩니다.
-</p>
+            본 페이지는 HADES의 활동과 순간들을 보기 편리하게 정리하기 위해 제작된 비공식 팬페이지입니다.
+            <br />
+            어떠한 수익 창출이나 상업적 목적 없이, HADES를 응원하고 기록하기 위해 운영됩니다.
+          </p>
+
         </footer>
 
       </div>
