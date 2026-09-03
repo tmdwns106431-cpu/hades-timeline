@@ -61,6 +61,7 @@ const members = [
     day: 11,
     color: "border-pink-400/20 bg-pink-400/[0.07] text-pink-300",
     dot: "bg-pink-400",
+    channelUrl: "https://www.sooplive.com/station/ldrboo",
   },
   {
     name: "연초록",
@@ -68,6 +69,7 @@ const members = [
     day: 1,
     color: "border-lime-400/20 bg-lime-400/[0.07] text-lime-300",
     dot: "bg-lime-400",
+    channelUrl: "https://www.sooplive.com/station/whatcherry4",
   },
   {
     name: "챈나",
@@ -75,6 +77,7 @@ const members = [
     day: 26,
     color: "border-indigo-400/30 bg-indigo-400/[0.09] text-indigo-300",
     dot: "bg-indigo-400",
+    channelUrl: "https://www.sooplive.com/station/chaenna02",
   },
   {
     name: "띵귤",
@@ -82,6 +85,7 @@ const members = [
     day: 24,
     color: "border-yellow-400/20 bg-yellow-400/[0.07] text-yellow-300",
     dot: "bg-yellow-400",
+    channelUrl: "https://www.sooplive.com/station/singgyul",
   },
   {
     name: "키마",
@@ -89,6 +93,7 @@ const members = [
     day: 22,
     color: "border-purple-400/20 bg-purple-400/[0.07] text-purple-300",
     dot: "bg-purple-400",
+    channelUrl: "https://www.sooplive.com/station/kymakyma",
   },
 ];
 
@@ -1571,9 +1576,12 @@ export default function Home() {
 
               {birthdayData.map(
                 (member) => (
-                  <div
+                  <a
                     key={member.name}
-                    className={`rounded-2xl border p-3 ${member.color}`}
+                    href={member.channelUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`block rounded-2xl border p-3 transition hover:-translate-y-0.5 hover:brightness-110 ${member.color}`}
                   >
 
                     <div className="flex items-center gap-2">
@@ -1614,7 +1622,11 @@ export default function Home() {
 
                     </div>
 
-                  </div>
+                    <p className="mt-2 text-[9px] font-bold opacity-40">
+                      멤버 클릭 시 방송국으로 이동합니다
+                    </p>
+
+                  </a>
                 )
               )}
 
