@@ -404,11 +404,14 @@ export default function Home() {
     useState<ActivityType>("단체");
 
   const [today, setToday] =
-    useState(
-      new Date()
-        .toISOString()
-        .slice(0, 10)
-    );
+    useState(() => {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(
+        now.getMonth() + 1
+      ).padStart(2, "0")}-${String(
+        now.getDate()
+      ).padStart(2, "0")}`;
+    });
 
   const [showTopButton, setShowTopButton] =
     useState(false);
@@ -451,10 +454,13 @@ export default function Home() {
   useEffect(() => {
     const timer =
       setInterval(() => {
+        const now = new Date();
         setToday(
-          new Date()
-            .toISOString()
-            .slice(0, 10)
+          `${now.getFullYear()}-${String(
+            now.getMonth() + 1
+          ).padStart(2, "0")}-${String(
+            now.getDate()
+          ).padStart(2, "0")}`
         );
       }, 60000);
 
@@ -2525,624 +2531,624 @@ export default function Home() {
                                   {playingVideoId ===
                                   youtubeId ? (
                                     <iframe
-                                      src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&playsinline=1`}
-                                      title={
-                                        event.title
-                                      }
-                                      className="aspect-video w-full"
-                                      allow="autoplay; encrypted-media; picture-in-picture"
-                                      allowFullScreen
-                                    />
-                                  ) : (
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        setPlayingVideoId(
-                                          youtubeId
-                                        )
-                                      }
-                                      className="group relative block w-full"
-                                    >
-
-                                      <img
-                                        src={
-                                          thumbnail
-                                        }
-                                        alt={`${event.title} 유튜브 썸네일`}
-                                        className="aspect-video w-full object-cover"
-                                      />
-
-                                      <div className="absolute inset-0 flex items-center justify-center bg-black/10">
-
-                                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-white shadow-2xl sm:h-20 sm:w-20">
-
-                                          <span className="ml-1 text-2xl sm:text-3xl">
-                                            ▶
-                                          </span>
-
-                                        </div>
-
-                                      </div>
-
-                                    </button>
-                                  )}
-
-                                </div>
-                              )}
-
-                          </div>
-                        </div>
-                      </article>
-                    </div>
-                  );
-                }
-              )}
-
-            </div>
-          </section>
-        )}
-
-        <footer className="mt-14 border-t border-white/10 py-8 text-center">
-
-          <p className="text-xs font-black tracking-[0.25em] text-slate-500">
-            FROM HELL TO THE STAGE
-          </p>
-
-          <p className="mt-2 text-[11px] leading-6 text-slate-600">
-            본 페이지는 HADES의 활동과 순간들을 보기 편리하게 정리하기 위해 제작된 비공식 팬페이지입니다.
-            <br />
-            어떠한 수익 창출이나 상업적 목적 없이, HADES를 응원하고 기록하기 위해 운영됩니다.
-          </p>
-
-        </footer>
-
-      </div>
-
-      {showTopButton && (
-        <button
-          type="button"
-          onClick={() =>
-            window.scrollTo({
-              top: 0,
-              behavior: "smooth",
-            })
-          }
-          className="fixed bottom-5 right-5 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-[#0b1020]/90 text-xl font-black shadow-2xl sm:bottom-7 sm:right-7 sm:h-14 sm:w-14"
-        >
-          ↑
-        </button>
-      )}
-
-      <style jsx>{`
-
-        .hades-side-art {
-          overflow: hidden;
-        }
-
-        .hades-side-left,
-        .hades-side-right {
-          position: fixed;
-          top: calc(50% + 70px);
-          width: 220px;
-          height: 72vh;
-          object-fit: cover;
-          object-position: center;
-          transform: translateY(-50%);
-          border-radius: 24px;
-          box-shadow: 0 20px 60px rgba(0,0,0,0.45);
-        }
-
-        .hades-side-left {
-          left: calc(50% - 740px);
-        }
-
-        .hades-side-right {
-          right: calc(50% - 740px);
-        }
-
-        @media (max-width: 1450px) {
-          .hades-side-left,
-          .hades-side-right {
-            width: 200px;
-            height: 68vh;
-          }
-
-          .hades-side-left {
-            left: 12px;
-          }
-
-          .hades-side-right {
-            right: 12px;
-          }
-        }
-
-        @media (max-width: 1200px) {
-          .hades-side-art {
-            display: none;
-          }
-        }
-
-        .hades-since-card {
-          box-shadow:
-            0 0 22px rgba(34, 211, 238, 0.28),
-            0 0 45px rgba(34, 211, 238, 0.16),
-            inset 0 0 18px rgba(34, 211, 238, 0.06);
-          animation: hades-since-glow 3s ease-in-out infinite;
-        }
-
-        @keyframes hades-since-glow {
-          0%,
-          100% {
-            box-shadow:
-              0 0 22px rgba(34, 211, 238, 0.25),
-              0 0 45px rgba(34, 211, 238, 0.13),
-              inset 0 0 18px rgba(34, 211, 238, 0.05);
-          }
-
-          50% {
-            box-shadow:
-              0 0 30px rgba(34, 211, 238, 0.45),
-              0 0 60px rgba(34, 211, 238, 0.25),
-              inset 0 0 22px rgba(34, 211, 238, 0.10);
-          }
-        }
-
-        .firework {
-          position: absolute;
-          width: 8px;
-          height: 8px;
-          border-radius: 9999px;
-          animation: firework-burst 2.4s ease-out infinite;
-        }
-
-        .firework span {
-          position: absolute;
-          left: 50%;
-          top: 50%;
-          width: 3px;
-          height: 75px;
-          border-radius: 9999px;
-          transform-origin: 50% 0;
-          background: linear-gradient(
-            to bottom,
-            rgba(255, 255, 255, 1),
-            rgba(168, 85, 247, 0)
-          );
-        }
-
-        .firework span:nth-child(1) {
-          transform: translate(-50%, 0) rotate(0deg);
-        }
-
-        .firework span:nth-child(2) {
-          transform: translate(-50%, 0) rotate(30deg);
-        }
-
-        .firework span:nth-child(3) {
-          transform: translate(-50%, 0) rotate(60deg);
-        }
-
-        .firework span:nth-child(4) {
-          transform: translate(-50%, 0) rotate(90deg);
-        }
-
-        .firework span:nth-child(5) {
-          transform: translate(-50%, 0) rotate(120deg);
-        }
-
-        .firework span:nth-child(6) {
-          transform: translate(-50%, 0) rotate(150deg);
-        }
-
-        .firework span:nth-child(7) {
-          transform: translate(-50%, 0) rotate(180deg);
-        }
-
-        .firework span:nth-child(8) {
-          transform: translate(-50%, 0) rotate(210deg);
-        }
-
-        .firework span:nth-child(9) {
-          transform: translate(-50%, 0) rotate(240deg);
-        }
-
-        .firework span:nth-child(10) {
-          transform: translate(-50%, 0) rotate(270deg);
-        }
-
-        .firework span:nth-child(11) {
-          transform: translate(-50%, 0) rotate(300deg);
-        }
-
-        .firework span:nth-child(12) {
-          transform: translate(-50%, 0) rotate(330deg);
-        }
-
-        .firework-1 {
-          left: 18%;
-          top: 25%;
-          animation-delay: 0s;
-        }
-
-        .firework-2 {
-          right: 18%;
-          top: 35%;
-          animation-delay: 0.8s;
-        }
-
-        .firework-3 {
-          left: 50%;
-          top: 18%;
-          animation-delay: 1.6s;
-        }
-
-        .firework-4 {
-          left: 8%;
-          top: 48%;
-          animation-delay: 0.4s;
-        }
-
-        .firework-5 {
-          right: 8%;
-          top: 48%;
-          animation-delay: 1.2s;
-        }
-
-        @keyframes firework-burst {
-          0% {
-            opacity: 0;
-            transform: scale(0.15);
-          }
-
-          12% {
-            opacity: 1;
-          }
-
-          55% {
-            opacity: 1;
-            transform: scale(1);
-          }
-
-          100% {
-            opacity: 0;
-            transform: scale(1.35);
-          }
-        }
-
-        .anniversary-celebration {
-          animation: anniversary-fade-in 0.45s ease-out forwards;
-        }
-
-        .anniversary-glow {
-          background:
-            radial-gradient(
-              circle at 50% 45%,
-              rgba(255,255,255,0.14),
-              transparent 18%
-            ),
-            radial-gradient(
-              circle at 50% 45%,
-              rgba(34,211,238,0.14),
-              transparent 42%
-            ),
-            radial-gradient(
-              circle at 50% 45%,
-              rgba(168,85,247,0.13),
-              transparent 65%
-            );
-          animation: anniversary-glow-pulse 2.8s ease-in-out infinite;
-        }
-
-        .anniversary-light {
-          box-shadow:
-            0 0 40px 20px rgba(255,255,255,0.8),
-            0 0 100px 50px rgba(34,211,238,0.45),
-            0 0 180px 90px rgba(168,85,247,0.3);
-          animation: anniversary-light-burst 1.8s ease-out forwards;
-        }
-
-        .anniversary-card-wrap {
-          animation: anniversary-card-enter 0.9s cubic-bezier(.16,1,.3,1) forwards;
-        }
-
-        .anniversary-card {
-          animation: anniversary-card-glow 2.5s ease-in-out infinite;
-        }
-
-        .anniversary-title {
-          animation: anniversary-title-enter 0.8s cubic-bezier(.16,1,.3,1) both;
-        }
-
-        .anniversary-title-delay {
-          animation-delay: 0.18s;
-        }
-
-        .anniversary-days {
-          animation: anniversary-days-enter 1s cubic-bezier(.16,1,.3,1) 0.35s both;
-        }
-
-        .anniversary-crown {
-          animation: anniversary-star-pop 1.2s ease-out 0.1s both;
-          text-shadow:
-            0 0 12px rgba(255,255,255,0.9),
-            0 0 35px rgba(34,211,238,0.8);
-        }
-
-        .anniversary-star {
-          animation: anniversary-star-float 1.8s ease-in-out infinite;
-          text-shadow:
-            0 0 10px rgba(255,255,255,0.9),
-            0 0 25px rgba(34,211,238,0.7);
-        }
-
-        .anniversary-star-2 {
-          animation-delay: 0.3s;
-        }
-
-        .anniversary-star-3 {
-          animation-delay: 0.6s;
-        }
-
-        .anniversary-firework {
-          animation-duration: 1.9s;
-        }
-
-        .anniversary-particle {
-          position: absolute;
-          left: 50%;
-          top: 46%;
-          width: 4px;
-          height: 4px;
-          border-radius: 9999px;
-          background: white;
-          box-shadow:
-            0 0 8px rgba(255,255,255,0.9),
-            0 0 18px rgba(34,211,238,0.7);
-          animation:
-            anniversary-particle-burst
-            2.4s
-            cubic-bezier(.16,1,.3,1)
-            forwards;
-        }
-
-        .anniversary-particle:nth-child(3n) {
-          width: 3px;
-          height: 8px;
-          border-radius: 2px;
-        }
-
-        .anniversary-particle:nth-child(4n) {
-          width: 6px;
-          height: 6px;
-        }
-
-        .anniversary-particle-1 { --x: -42vw; --y: -38vh; animation-delay: .05s; }
-        .anniversary-particle-2 { --x: 39vw; --y: -32vh; animation-delay: .08s; }
-        .anniversary-particle-3 { --x: -30vw; --y: -25vh; animation-delay: .11s; }
-        .anniversary-particle-4 { --x: 27vw; --y: -39vh; animation-delay: .14s; }
-        .anniversary-particle-5 { --x: -48vw; --y: -5vh; animation-delay: .17s; }
-        .anniversary-particle-6 { --x: 47vw; --y: -8vh; animation-delay: .20s; }
-        .anniversary-particle-7 { --x: -38vw; --y: 18vh; animation-delay: .23s; }
-        .anniversary-particle-8 { --x: 42vw; --y: 21vh; animation-delay: .26s; }
-        .anniversary-particle-9 { --x: -25vw; --y: 33vh; animation-delay: .29s; }
-        .anniversary-particle-10 { --x: 30vw; --y: 34vh; animation-delay: .32s; }
-        .anniversary-particle-11 { --x: -14vw; --y: -40vh; animation-delay: .35s; }
-        .anniversary-particle-12 { --x: 15vw; --y: -37vh; animation-delay: .38s; }
-        .anniversary-particle-13 { --x: -50vw; --y: 28vh; animation-delay: .41s; }
-        .anniversary-particle-14 { --x: 50vw; --y: 29vh; animation-delay: .44s; }
-        .anniversary-particle-15 { --x: -20vw; --y: 42vh; animation-delay: .47s; }
-        .anniversary-particle-16 { --x: 19vw; --y: 43vh; animation-delay: .50s; }
-        .anniversary-particle-17 { --x: -34vw; --y: 5vh; animation-delay: .53s; }
-        .anniversary-particle-18 { --x: 35vw; --y: 7vh; animation-delay: .56s; }
-        .anniversary-particle-19 { --x: -9vw; --y: -28vh; animation-delay: .59s; }
-        .anniversary-particle-20 { --x: 9vw; --y: -30vh; animation-delay: .62s; }
-        .anniversary-particle-21 { --x: -45vw; --y: -20vh; animation-delay: .65s; }
-        .anniversary-particle-22 { --x: 45vw; --y: -19vh; animation-delay: .68s; }
-        .anniversary-particle-23 { --x: -44vw; --y: 40vh; animation-delay: .71s; }
-        .anniversary-particle-24 { --x: 43vw; --y: 39vh; animation-delay: .74s; }
-        .anniversary-particle-25 { --x: -5vw; --y: 38vh; animation-delay: .77s; }
-        .anniversary-particle-26 { --x: 6vw; --y: 40vh; animation-delay: .80s; }
-        .anniversary-particle-27 { --x: -16vw; --y: 18vh; animation-delay: .83s; }
-        .anniversary-particle-28 { --x: 17vw; --y: 20vh; animation-delay: .86s; }
-
-        @keyframes anniversary-fade-in {
-          from {
-            opacity: 0;
-          }
-
-          to {
-            opacity: 1;
-          }
-        }
-
-        @keyframes anniversary-glow-pulse {
-          0%,
-          100% {
-            opacity: 0.55;
-            transform: scale(0.95);
-          }
-
-          50% {
-            opacity: 1;
-            transform: scale(1.08);
-          }
-        }
-
-        @keyframes anniversary-light-burst {
-          0% {
-            opacity: 0;
-            transform: translate(-50%, -50%) scale(0.1);
-          }
-
-          15% {
-            opacity: 1;
-          }
-
-          100% {
-            opacity: 0;
-            transform: translate(-50%, -50%) scale(28);
-          }
-        }
-
-        @keyframes anniversary-card-enter {
-          0% {
-            opacity: 0;
-            transform: translateY(35px) scale(0.72);
-          }
-
-          55% {
-            opacity: 1;
-            transform: translateY(-5px) scale(1.04);
-          }
-
-          100% {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-
-        @keyframes anniversary-card-glow {
-          0%,
-          100% {
-            box-shadow:
-              0 0 50px rgba(168,85,247,0.25),
-              0 0 100px rgba(34,211,238,0.08);
-          }
-
-          50% {
-            box-shadow:
-              0 0 75px rgba(168,85,247,0.4),
-              0 0 130px rgba(34,211,238,0.16);
-          }
-        }
-
-        @keyframes anniversary-title-enter {
-          0% {
-            opacity: 0;
-            transform: translateY(18px) scale(0.88);
-          }
-
-          100% {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-
-        @keyframes anniversary-days-enter {
-          0% {
-            opacity: 0;
-            transform: scale(0.5);
-          }
-
-          65% {
-            opacity: 1;
-            transform: scale(1.08);
-          }
-
-          100% {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-
-        @keyframes anniversary-star-pop {
-          0% {
-            opacity: 0;
-            transform: scale(0) rotate(-90deg);
-          }
-
-          70% {
-            opacity: 1;
-            transform: scale(1.25) rotate(10deg);
-          }
-
-          100% {
-            opacity: 1;
-            transform: scale(1) rotate(0deg);
-          }
-        }
-
-        @keyframes anniversary-star-float {
-          0%,
-          100% {
-            opacity: 0.55;
-            transform: translateY(0) scale(0.9);
-          }
-
-          50% {
-            opacity: 1;
-            transform: translateY(-5px) scale(1.2);
-          }
-        }
-
-        @keyframes anniversary-particle-burst {
-          0% {
-            opacity: 0;
-            transform:
-              translate(-50%, -50%)
-              scale(0);
-          }
-
-          15% {
-            opacity: 1;
-          }
-
-          100% {
-            opacity: 0;
-            transform:
-              translate(
-                calc(-50% + var(--x)),
-                calc(-50% + var(--y))
-              )
-              scale(1);
-          }
-        }
-
-        @media (max-width: 640px) {
-
-          .firework span {
-            width: 2px;
-            height: 48px;
-          }
-
-          .firework-1 {
-            left: 12%;
-            top: 22%;
-          }
-
-          .firework-2 {
-            right: 12%;
-            top: 32%;
-          }
-
-          .firework-3 {
-            left: 50%;
-            top: 16%;
-          }
-
-          .firework-4 {
-            left: 7%;
-            top: 50%;
-          }
-
-          .firework-5 {
-            right: 7%;
-            top: 50%;
-          }
-
-          .anniversary-card {
-            padding-left: 1.25rem;
-            padding-right: 1.25rem;
-          }
-
-          .anniversary-particle {
-            width: 3px;
-            height: 3px;
-          }
-        }
-
-      `}</style>
-
-    </main>
-  );
-}
+                                      src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&playsinline=1`} 
+                                      title={ 
+                                        event.title 
+                                      } 
+                                      className="aspect-video w-full" 
+                                      allow="autoplay; encrypted-media; picture-in-picture" 
+                                      allowFullScreen 
+                                    /> 
+                                  ) : ( 
+                                    <button 
+                                      type="button" 
+                                      onClick={() => 
+                                        setPlayingVideoId( 
+                                          youtubeId 
+                                        ) 
+                                      } 
+                                      className="group relative block w-full" 
+                                    > 
+ 
+                                      <img 
+                                        src={ 
+                                          thumbnail 
+                                        } 
+                                        alt={`${event.title} 유튜브 썸네일`} 
+                                        className="aspect-video w-full object-cover" 
+                                      /> 
+ 
+                                      <div className="absolute inset-0 flex items-center justify-center bg-black/10"> 
+ 
+                                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-white shadow-2xl sm:h-20 sm:w-20"> 
+ 
+                                          <span className="ml-1 text-2xl sm:text-3xl"> 
+                                            ▶ 
+                                          </span> 
+ 
+                                        </div> 
+ 
+                                      </div> 
+ 
+                                    </button> 
+                                  )} 
+ 
+                                </div> 
+                              )} 
+ 
+                          </div> 
+                        </div> 
+                      </article> 
+                    </div> 
+                  ); 
+                } 
+              )} 
+ 
+            </div> 
+          </section> 
+        )} 
+ 
+        <footer className="mt-14 border-t border-white/10 py-8 text-center"> 
+ 
+          <p className="text-xs font-black tracking-[0.25em] text-slate-500"> 
+            FROM HELL TO THE STAGE 
+          </p> 
+ 
+          <p className="mt-2 text-[11px] leading-6 text-slate-600"> 
+            본 페이지는 HADES의 활동과 순간들을 보기 편리하게 정리하기 위해 제작된 비공식 팬페이지입니다. 
+            <br /> 
+            어떠한 수익 창출이나 상업적 목적 없이, HADES를 응원하고 기록하기 위해 운영됩니다. 
+          </p> 
+ 
+        </footer> 
+ 
+      </div> 
+ 
+      {showTopButton && ( 
+        <button 
+          type="button" 
+          onClick={() => 
+            window.scrollTo({ 
+              top: 0, 
+              behavior: "smooth", 
+            }) 
+          } 
+          className="fixed bottom-5 right-5 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-[#0b1020]/90 text-xl font-black shadow-2xl sm:bottom-7 sm:right-7 sm:h-14 sm:w-14" 
+        > 
+          ↑ 
+        </button> 
+      )} 
+ 
+      <style jsx>{` 
+ 
+        .hades-side-art { 
+          overflow: hidden; 
+        } 
+ 
+        .hades-side-left, 
+        .hades-side-right { 
+          position: fixed; 
+          top: calc(50% + 70px); 
+          width: 220px; 
+          height: 72vh; 
+          object-fit: cover; 
+          object-position: center; 
+          transform: translateY(-50%); 
+          border-radius: 24px; 
+          box-shadow: 0 20px 60px rgba(0,0,0,0.45); 
+        } 
+ 
+        .hades-side-left { 
+          left: calc(50% - 740px); 
+        } 
+ 
+        .hades-side-right { 
+          right: calc(50% - 740px); 
+        } 
+ 
+        @media (max-width: 1450px) { 
+          .hades-side-left, 
+          .hades-side-right { 
+            width: 200px; 
+            height: 68vh; 
+          } 
+ 
+          .hades-side-left { 
+            left: 12px; 
+          } 
+ 
+          .hades-side-right { 
+            right: 12px; 
+          } 
+        } 
+ 
+        @media (max-width: 1200px) { 
+          .hades-side-art { 
+            display: none; 
+          } 
+        } 
+ 
+        .hades-since-card { 
+          box-shadow: 
+            0 0 22px rgba(34, 211, 238, 0.28), 
+            0 0 45px rgba(34, 211, 238, 0.16), 
+            inset 0 0 18px rgba(34, 211, 238, 0.06); 
+          animation: hades-since-glow 3s ease-in-out infinite; 
+        } 
+ 
+        @keyframes hades-since-glow { 
+          0%, 
+          100% { 
+            box-shadow: 
+              0 0 22px rgba(34, 211, 238, 0.25), 
+              0 0 45px rgba(34, 211, 238, 0.13), 
+              inset 0 0 18px rgba(34, 211, 238, 0.05); 
+          } 
+ 
+          50% { 
+            box-shadow: 
+              0 0 30px rgba(34, 211, 238, 0.45), 
+              0 0 60px rgba(34, 211, 238, 0.25), 
+              inset 0 0 22px rgba(34, 211, 238, 0.10); 
+          } 
+        } 
+ 
+        .firework { 
+          position: absolute; 
+          width: 8px; 
+          height: 8px; 
+          border-radius: 9999px; 
+          animation: firework-burst 2.4s ease-out infinite; 
+        } 
+ 
+        .firework span { 
+          position: absolute; 
+          left: 50%; 
+          top: 50%; 
+          width: 3px; 
+          height: 75px; 
+          border-radius: 9999px; 
+          transform-origin: 50% 0; 
+          background: linear-gradient( 
+            to bottom, 
+            rgba(255, 255, 255, 1), 
+            rgba(168, 85, 247, 0) 
+          ); 
+        } 
+ 
+        .firework span:nth-child(1) { 
+          transform: translate(-50%, 0) rotate(0deg); 
+        } 
+ 
+        .firework span:nth-child(2) { 
+          transform: translate(-50%, 0) rotate(30deg); 
+        } 
+ 
+        .firework span:nth-child(3) { 
+          transform: translate(-50%, 0) rotate(60deg); 
+        } 
+ 
+        .firework span:nth-child(4) { 
+          transform: translate(-50%, 0) rotate(90deg); 
+        } 
+ 
+        .firework span:nth-child(5) { 
+          transform: translate(-50%, 0) rotate(120deg); 
+        } 
+ 
+        .firework span:nth-child(6) { 
+          transform: translate(-50%, 0) rotate(150deg); 
+        } 
+ 
+        .firework span:nth-child(7) { 
+          transform: translate(-50%, 0) rotate(180deg); 
+        } 
+ 
+        .firework span:nth-child(8) { 
+          transform: translate(-50%, 0) rotate(210deg); 
+        } 
+ 
+        .firework span:nth-child(9) { 
+          transform: translate(-50%, 0) rotate(240deg); 
+        } 
+ 
+        .firework span:nth-child(10) { 
+          transform: translate(-50%, 0) rotate(270deg); 
+        } 
+ 
+        .firework span:nth-child(11) { 
+          transform: translate(-50%, 0) rotate(300deg); 
+        } 
+ 
+        .firework span:nth-child(12) { 
+          transform: translate(-50%, 0) rotate(330deg); 
+        } 
+ 
+        .firework-1 { 
+          left: 18%; 
+          top: 25%; 
+          animation-delay: 0s; 
+        } 
+ 
+        .firework-2 { 
+          right: 18%; 
+          top: 35%; 
+          animation-delay: 0.8s; 
+        } 
+ 
+        .firework-3 { 
+          left: 50%; 
+          top: 18%; 
+          animation-delay: 1.6s; 
+        } 
+ 
+        .firework-4 { 
+          left: 8%; 
+          top: 48%; 
+          animation-delay: 0.4s; 
+        } 
+ 
+        .firework-5 { 
+          right: 8%; 
+          top: 48%; 
+          animation-delay: 1.2s; 
+        } 
+ 
+        @keyframes firework-burst { 
+          0% { 
+            opacity: 0; 
+            transform: scale(0.15); 
+          } 
+ 
+          12% { 
+            opacity: 1; 
+          } 
+ 
+          55% { 
+            opacity: 1; 
+            transform: scale(1); 
+          } 
+ 
+          100% { 
+            opacity: 0; 
+            transform: scale(1.35); 
+          } 
+        } 
+ 
+        .anniversary-celebration { 
+          animation: anniversary-fade-in 0.45s ease-out forwards; 
+        } 
+ 
+        .anniversary-glow { 
+          background: 
+            radial-gradient( 
+              circle at 50% 45%, 
+              rgba(255,255,255,0.14), 
+              transparent 18% 
+            ), 
+            radial-gradient( 
+              circle at 50% 45%, 
+              rgba(34,211,238,0.14), 
+              transparent 42% 
+            ), 
+            radial-gradient( 
+              circle at 50% 45%, 
+              rgba(168,85,247,0.13), 
+              transparent 65% 
+            ); 
+          animation: anniversary-glow-pulse 2.8s ease-in-out infinite; 
+        } 
+ 
+        .anniversary-light { 
+          box-shadow: 
+            0 0 40px 20px rgba(255,255,255,0.8), 
+            0 0 100px 50px rgba(34,211,238,0.45), 
+            0 0 180px 90px rgba(168,85,247,0.3); 
+          animation: anniversary-light-burst 1.8s ease-out forwards; 
+        } 
+ 
+        .anniversary-card-wrap { 
+          animation: anniversary-card-enter 0.9s cubic-bezier(.16,1,.3,1) forwards; 
+        } 
+ 
+        .anniversary-card { 
+          animation: anniversary-card-glow 2.5s ease-in-out infinite; 
+        } 
+ 
+        .anniversary-title { 
+          animation: anniversary-title-enter 0.8s cubic-bezier(.16,1,.3,1) both; 
+        } 
+ 
+        .anniversary-title-delay { 
+          animation-delay: 0.18s; 
+        } 
+ 
+        .anniversary-days { 
+          animation: anniversary-days-enter 1s cubic-bezier(.16,1,.3,1) 0.35s both; 
+        } 
+ 
+        .anniversary-crown { 
+          animation: anniversary-star-pop 1.2s ease-out 0.1s both; 
+          text-shadow: 
+            0 0 12px rgba(255,255,255,0.9), 
+            0 0 35px rgba(34,211,238,0.8); 
+        } 
+ 
+        .anniversary-star { 
+          animation: anniversary-star-float 1.8s ease-in-out infinite; 
+          text-shadow: 
+            0 0 10px rgba(255,255,255,0.9), 
+            0 0 25px rgba(34,211,238,0.7); 
+        } 
+ 
+        .anniversary-star-2 { 
+          animation-delay: 0.3s; 
+        } 
+ 
+        .anniversary-star-3 { 
+          animation-delay: 0.6s; 
+        } 
+ 
+        .anniversary-firework { 
+          animation-duration: 1.9s; 
+        } 
+ 
+        .anniversary-particle { 
+          position: absolute; 
+          left: 50%; 
+          top: 46%; 
+          width: 4px; 
+          height: 4px; 
+          border-radius: 9999px; 
+          background: white; 
+          box-shadow: 
+            0 0 8px rgba(255,255,255,0.9), 
+            0 0 18px rgba(34,211,238,0.7); 
+          animation: 
+            anniversary-particle-burst 
+            2.4s 
+            cubic-bezier(.16,1,.3,1) 
+            forwards; 
+        } 
+ 
+        .anniversary-particle:nth-child(3n) { 
+          width: 3px; 
+          height: 8px; 
+          border-radius: 2px; 
+        } 
+ 
+        .anniversary-particle:nth-child(4n) { 
+          width: 6px; 
+          height: 6px; 
+        } 
+ 
+        .anniversary-particle-1 { --x: -42vw; --y: -38vh; animation-delay: .05s; } 
+        .anniversary-particle-2 { --x: 39vw; --y: -32vh; animation-delay: .08s; } 
+        .anniversary-particle-3 { --x: -30vw; --y: -25vh; animation-delay: .11s; } 
+        .anniversary-particle-4 { --x: 27vw; --y: -39vh; animation-delay: .14s; } 
+        .anniversary-particle-5 { --x: -48vw; --y: -5vh; animation-delay: .17s; } 
+        .anniversary-particle-6 { --x: 47vw; --y: -8vh; animation-delay: .20s; } 
+        .anniversary-particle-7 { --x: -38vw; --y: 18vh; animation-delay: .23s; } 
+        .anniversary-particle-8 { --x: 42vw; --y: 21vh; animation-delay: .26s; } 
+        .anniversary-particle-9 { --x: -25vw; --y: 33vh; animation-delay: .29s; } 
+        .anniversary-particle-10 { --x: 30vw; --y: 34vh; animation-delay: .32s; } 
+        .anniversary-particle-11 { --x: -14vw; --y: -40vh; animation-delay: .35s; } 
+        .anniversary-particle-12 { --x: 15vw; --y: -37vh; animation-delay: .38s; } 
+        .anniversary-particle-13 { --x: -50vw; --y: 28vh; animation-delay: .41s; } 
+        .anniversary-particle-14 { --x: 50vw; --y: 29vh; animation-delay: .44s; } 
+        .anniversary-particle-15 { --x: -20vw; --y: 42vh; animation-delay: .47s; } 
+        .anniversary-particle-16 { --x: 19vw; --y: 43vh; animation-delay: .50s; } 
+        .anniversary-particle-17 { --x: -34vw; --y: 5vh; animation-delay: .53s; } 
+        .anniversary-particle-18 { --x: 35vw; --y: 7vh; animation-delay: .56s; } 
+        .anniversary-particle-19 { --x: -9vw; --y: -28vh; animation-delay: .59s; } 
+        .anniversary-particle-20 { --x: 9vw; --y: -30vh; animation-delay: .62s; } 
+        .anniversary-particle-21 { --x: -45vw; --y: -20vh; animation-delay: .65s; } 
+        .anniversary-particle-22 { --x: 45vw; --y: -19vh; animation-delay: .68s; } 
+        .anniversary-particle-23 { --x: -44vw; --y: 40vh; animation-delay: .71s; } 
+        .anniversary-particle-24 { --x: 43vw; --y: 39vh; animation-delay: .74s; } 
+        .anniversary-particle-25 { --x: -5vw; --y: 38vh; animation-delay: .77s; } 
+        .anniversary-particle-26 { --x: 6vw; --y: 40vh; animation-delay: .80s; } 
+        .anniversary-particle-27 { --x: -16vw; --y: 18vh; animation-delay: .83s; } 
+        .anniversary-particle-28 { --x: 17vw; --y: 20vh; animation-delay: .86s; } 
+ 
+        @keyframes anniversary-fade-in { 
+          from { 
+            opacity: 0; 
+          } 
+ 
+          to { 
+            opacity: 1; 
+          } 
+        } 
+ 
+        @keyframes anniversary-glow-pulse { 
+          0%, 
+          100% { 
+            opacity: 0.55; 
+            transform: scale(0.95); 
+          } 
+ 
+          50% { 
+            opacity: 1; 
+            transform: scale(1.08); 
+          } 
+        } 
+ 
+        @keyframes anniversary-light-burst { 
+          0% { 
+            opacity: 0; 
+            transform: translate(-50%, -50%) scale(0.1); 
+          } 
+ 
+          15% { 
+            opacity: 1; 
+          } 
+ 
+          100% { 
+            opacity: 0; 
+            transform: translate(-50%, -50%) scale(28); 
+          } 
+        } 
+ 
+        @keyframes anniversary-card-enter { 
+          0% { 
+            opacity: 0; 
+            transform: translateY(35px) scale(0.72); 
+          } 
+ 
+          55% { 
+            opacity: 1; 
+            transform: translateY(-5px) scale(1.04); 
+          } 
+ 
+          100% { 
+            opacity: 1; 
+            transform: translateY(0) scale(1); 
+          } 
+        } 
+ 
+        @keyframes anniversary-card-glow { 
+          0%, 
+          100% { 
+            box-shadow: 
+              0 0 50px rgba(168,85,247,0.25), 
+              0 0 100px rgba(34,211,238,0.08); 
+          } 
+ 
+          50% { 
+            box-shadow: 
+              0 0 75px rgba(168,85,247,0.4), 
+              0 0 130px rgba(34,211,238,0.16); 
+          } 
+        } 
+ 
+        @keyframes anniversary-title-enter { 
+          0% { 
+            opacity: 0; 
+            transform: translateY(18px) scale(0.88); 
+          } 
+ 
+          100% { 
+            opacity: 1; 
+            transform: translateY(0) scale(1); 
+          } 
+        } 
+ 
+        @keyframes anniversary-days-enter { 
+          0% { 
+            opacity: 0; 
+            transform: scale(0.5); 
+          } 
+ 
+          65% { 
+            opacity: 1; 
+            transform: scale(1.08); 
+          } 
+ 
+          100% { 
+            opacity: 1; 
+            transform: scale(1); 
+          } 
+        } 
+ 
+        @keyframes anniversary-star-pop { 
+          0% { 
+            opacity: 0; 
+            transform: scale(0) rotate(-90deg); 
+          } 
+ 
+          70% { 
+            opacity: 1; 
+            transform: scale(1.25) rotate(10deg); 
+          } 
+ 
+          100% { 
+            opacity: 1; 
+            transform: scale(1) rotate(0deg); 
+          } 
+        } 
+ 
+        @keyframes anniversary-star-float { 
+          0%, 
+          100% { 
+            opacity: 0.55; 
+            transform: translateY(0) scale(0.9); 
+          } 
+ 
+          50% { 
+            opacity: 1; 
+            transform: translateY(-5px) scale(1.2); 
+          } 
+        } 
+ 
+        @keyframes anniversary-particle-burst { 
+          0% { 
+            opacity: 0; 
+            transform: 
+              translate(-50%, -50%) 
+              scale(0); 
+          } 
+ 
+          15% { 
+            opacity: 1; 
+          } 
+ 
+          100% { 
+            opacity: 0; 
+            transform: 
+              translate( 
+                calc(-50% + var(--x)), 
+                calc(-50% + var(--y)) 
+              ) 
+              scale(1); 
+          } 
+        } 
+ 
+        @media (max-width: 640px) { 
+ 
+          .firework span { 
+            width: 2px; 
+            height: 48px; 
+          } 
+ 
+          .firework-1 { 
+            left: 12%; 
+            top: 22%; 
+          } 
+ 
+          .firework-2 { 
+            right: 12%; 
+            top: 32%; 
+          } 
+ 
+          .firework-3 { 
+            left: 50%; 
+            top: 16%; 
+          } 
+ 
+          .firework-4 { 
+            left: 7%; 
+            top: 50%; 
+          } 
+ 
+          .firework-5 { 
+            right: 7%; 
+            top: 50%; 
+          } 
+ 
+          .anniversary-card { 
+            padding-left: 1.25rem; 
+            padding-right: 1.25rem; 
+          } 
+ 
+          .anniversary-particle { 
+            width: 3px; 
+            height: 3px; 
+          } 
+        } 
+ 
+      `}</style> 
+ 
+    </main> 
+  ); 
+} 
