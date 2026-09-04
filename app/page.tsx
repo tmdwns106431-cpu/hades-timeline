@@ -1352,6 +1352,19 @@ export default function Home() {
         </div>
       )}
 
+      <div className="hades-side-art pointer-events-none fixed inset-0 z-0 hidden lg:block">
+        <img
+          src="/hades-left.png"
+          alt=""
+          className="hades-side-left"
+        />
+        <img
+          src="/hades-right.png"
+          alt=""
+          className="hades-side-right"
+        />
+      </div>
+
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
 
         <div
@@ -1479,7 +1492,7 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-5xl px-4 py-7 sm:py-10">
+      <div className="relative z-10 mx-auto max-w-5xl px-4 py-7 sm:py-10">
 
         <div className="mb-7 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.045] backdrop-blur-xl">
 
@@ -2601,6 +2614,53 @@ export default function Home() {
       )}
 
       <style jsx>{`
+
+        .hades-side-art {
+          overflow: hidden;
+        }
+
+        .hades-side-left,
+        .hades-side-right {
+          position: fixed;
+          top: calc(50% + 70px);
+          width: 220px;
+          height: 72vh;
+          object-fit: cover;
+          object-position: center;
+          transform: translateY(-50%);
+          border-radius: 24px;
+          box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+        }
+
+        .hades-side-left {
+          left: calc(50% - 740px);
+        }
+
+        .hades-side-right {
+          right: calc(50% - 740px);
+        }
+
+        @media (max-width: 1450px) {
+          .hades-side-left,
+          .hades-side-right {
+            width: 200px;
+            height: 68vh;
+          }
+
+          .hades-side-left {
+            left: 12px;
+          }
+
+          .hades-side-right {
+            right: 12px;
+          }
+        }
+
+        @media (max-width: 1200px) {
+          .hades-side-art {
+            display: none;
+          }
+        }
 
         .hades-since-card {
           box-shadow:
