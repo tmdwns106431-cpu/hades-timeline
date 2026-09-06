@@ -419,6 +419,9 @@ export default function Home() {
   const [highlightedEventId, setHighlightedEventId] =
     useState<number | null>(null);
 
+  const [timelineDate, setTimelineDate] =
+    useState("");
+
   const [showSpecialCelebration, setShowSpecialCelebration] =
     useState(false);
 
@@ -1098,6 +1101,24 @@ export default function Home() {
     window.setTimeout(() => {
       setHighlightedEventId(null);
     }, 1800);
+  };
+
+  const jumpToTimelineDate = (value: string) => {
+    setTimelineDate(value);
+
+    if (!value) return;
+
+    const target = events
+      .filter((event) => event.date === value)
+      .sort((a, b) => {
+        const timeA = a.time || "00:00";
+        const timeB = b.time || "00:00";
+        return timeA.localeCompare(timeB);
+      })[0];
+
+    if (!target) return;
+
+    scrollToEvent(target.id);
   };
 
   const birthdayData =
@@ -2124,6 +2145,45 @@ export default function Home() {
         </div>
 
         <div className="mb-8 rounded-3xl border border-white/10 bg-white/[0.045] p-4 backdrop-blur-xl">
+
+          <div className="mb-4 rounded-2xl border border-cyan-400/10 bg-cyan-400/[0.035] p-3 sm:p-4">
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+
+              <div>
+                <p className="text-[10px] font-black tracking-[0.22em] text-cyan-300">
+                  TIMELINE CALENDAR
+                </p>
+                <p className="mt-1 text-xs font-bold text-slate-500">
+                  날짜를 선택하면 해당 날짜의 기록으로 이동합니다.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={timelineDate}
+                  onChange={(e) =>
+                    jumpToTimelineDate(e.target.value)
+                  }
+                  className="rounded-xl border border-cyan-400/20 bg-white/5 px-3 py-2 text-xs font-bold text-white outline-none"
+                  aria-label="타임라인 날짜 선택"
+                />
+
+                {timelineDate && (
+                  <button
+                    type="button"
+                    onClick={() => setTimelineDate("")}
+                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-slate-400"
+                  >
+                    초기화
+                  </button>
+                )}
+              </div>
+
+            </div>
+
+          </div>
 
           <div className="flex flex-wrap gap-2">
 
