@@ -652,7 +652,7 @@ export default function Home() {
 
     if (!user) {
       alert(
-        "운영자 로그인 후 이용해주세요."
+        "관리자 로그인 후 이용해주세요."
       );
       return;
     }
@@ -890,7 +890,7 @@ export default function Home() {
   ) => {
     if (!user) {
       alert(
-        "운영자 로그인 후 이용해주세요."
+        "관리자 로그인 후 이용해주세요."
       );
       return;
     }
@@ -951,7 +951,7 @@ export default function Home() {
     async (event: Event) => {
       if (!user) {
         alert(
-          "운영자 로그인 후 이용해주세요."
+          "관리자 로그인 후 이용해주세요."
         );
         return;
       }
@@ -1005,7 +1005,7 @@ export default function Home() {
     async (event: Event) => {
       if (!user) {
         alert(
-          "운영자 로그인 후 이용해주세요."
+          "관리자 로그인 후 이용해주세요."
         );
         return;
       }
@@ -1050,7 +1050,7 @@ export default function Home() {
     async (event: Event) => {
       if (!user) {
         alert(
-          "운영자 로그인 후 이용해주세요."
+          "관리자 로그인 후 이용해주세요."
         );
         return;
       }
@@ -1473,7 +1473,7 @@ export default function Home() {
             </div>
 
             <p className="mt-3 text-xs font-medium text-slate-400 sm:text-sm">
-              The Journey of HADES
+              The Journey of HADES by코코몽
             </p>
 
             {user ? (
@@ -1485,7 +1485,7 @@ export default function Home() {
                 }}
                 className="mt-3 rounded-xl border border-pink-400/20 bg-pink-400/10 px-4 py-2 text-xs font-bold text-pink-300"
               >
-                운영자 로그아웃
+                관리자 로그아웃
               </button>
             ) : (
               <button
@@ -1493,12 +1493,12 @@ export default function Home() {
                 onClick={async () => {
                   const email =
                     window.prompt(
-                      "운영자 이메일"
+                      "관리자 이메일"
                     );
 
                   const password =
                     window.prompt(
-                      "운영자 비밀번호"
+                      "관리자 비밀번호"
                     );
 
                   if (
@@ -1524,7 +1524,7 @@ export default function Home() {
                 }}
                 className="mt-3 rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-xs font-bold text-cyan-300"
               >
-                🔐 운영자 로그인
+                🔐 관리자 로그인
               </button>
             )}
 
@@ -1568,12 +1568,12 @@ export default function Home() {
                 </p>
 
                 <h2 className="mt-2 text-2xl font-black sm:text-3xl">
-                  Every Moment, Every Stage
+                  THE STORY OF HADES
                 </h2>
 
                 <p className="mt-3 text-sm leading-6 text-slate-400 sm:text-base sm:leading-7">
                   HADES의 시작부터 지금까지,
-                  모든 순간을 기록합니다. by 코코몽
+                  모든 순간을 기록합니다. 
                 </p>
 
                 <div className="mt-5 flex flex-col gap-2 sm:flex-row">
