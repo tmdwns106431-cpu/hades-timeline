@@ -61,7 +61,6 @@ const members = [
     day: 11,
     color: "border-pink-400/20 bg-pink-400/[0.07] text-pink-300",
     dot: "bg-pink-400",
-    channelUrl: "https://www.sooplive.com/station/ldrboo",
   },
   {
     name: "연초록",
@@ -69,7 +68,6 @@ const members = [
     day: 1,
     color: "border-lime-400/20 bg-lime-400/[0.07] text-lime-300",
     dot: "bg-lime-400",
-    channelUrl: "https://www.sooplive.com/station/whatcherry4",
   },
   {
     name: "챈나",
@@ -77,7 +75,6 @@ const members = [
     day: 26,
     color: "border-indigo-400/30 bg-indigo-400/[0.09] text-indigo-300",
     dot: "bg-indigo-400",
-    channelUrl: "https://www.sooplive.com/station/chaenna02",
   },
   {
     name: "띵귤",
@@ -85,7 +82,6 @@ const members = [
     day: 24,
     color: "border-yellow-400/20 bg-yellow-400/[0.07] text-yellow-300",
     dot: "bg-yellow-400",
-    channelUrl: "https://www.sooplive.com/station/singgyul",
   },
   {
     name: "키마",
@@ -93,7 +89,6 @@ const members = [
     day: 22,
     color: "border-purple-400/20 bg-purple-400/[0.07] text-purple-300",
     dot: "bg-purple-400",
-    channelUrl: "https://www.sooplive.com/station/kymakyma",
   },
 ];
 
@@ -206,6 +201,10 @@ function sortEvents(
   order: "newest" | "oldest"
 ) {
   return [...events].sort((a, b) => {
+    if (Boolean(a.pinned) !== Boolean(b.pinned)) {
+      return a.pinned ? -1 : 1;
+    }
+
     const aValue = `${a.date} ${a.time}`;
     const bValue = `${b.date} ${b.time}`;
 
@@ -404,14 +403,11 @@ export default function Home() {
     useState<ActivityType>("단체");
 
   const [today, setToday] =
-    useState(() => {
-      const now = new Date();
-      return `${now.getFullYear()}-${String(
-        now.getMonth() + 1
-      ).padStart(2, "0")}-${String(
-        now.getDate()
-      ).padStart(2, "0")}`;
-    });
+    useState(
+      new Date()
+        .toISOString()
+        .slice(0, 10)
+    );
 
   const [showTopButton, setShowTopButton] =
     useState(false);
@@ -419,14 +415,17 @@ export default function Home() {
   const [highlightedEventId, setHighlightedEventId] =
     useState<number | null>(null);
 
-  const [timelineDate, setTimelineDate] =
-    useState("");
-
-  const [showSpecialCelebration, setShowSpecialCelebration] =
-    useState(false);
+  const [expandedMonths, setExpandedMonths] =
+    useState<Set<string>>(new Set());
 
   const is365Days =
     today === "2026-09-05";
+
+  /*
+   * =========================
+   * 로그인
+   * =========================
+   */
 
   useEffect(() => {
     document.title =
@@ -454,22 +453,31 @@ export default function Home() {
     };
   }, []);
 
+  /*
+   * =========================
+   * 날짜
+   * =========================
+   */
+
   useEffect(() => {
     const timer =
       setInterval(() => {
-        const now = new Date();
         setToday(
-          `${now.getFullYear()}-${String(
-            now.getMonth() + 1
-          ).padStart(2, "0")}-${String(
-            now.getDate()
-          ).padStart(2, "0")}`
+          new Date()
+            .toISOString()
+            .slice(0, 10)
         );
       }, 60000);
 
     return () =>
       clearInterval(timer);
   }, []);
+
+  /*
+   * =========================
+   * 스크롤
+   * =========================
+   */
 
   useEffect(() => {
     const handleScroll = () => {
@@ -492,6 +500,12 @@ export default function Home() {
         handleScroll
       );
   }, []);
+
+  /*
+   * =========================
+   * Supabase 기록 불러오기
+   * =========================
+   */
 
   const loadEvents = async () => {
     setLoading(true);
@@ -557,6 +571,12 @@ export default function Home() {
     loadEvents();
   }, []);
 
+  /*
+   * =========================
+   * 폼 초기화
+   * =========================
+   */
+
   const resetForm = () => {
     setEditingId(null);
     setDate("");
@@ -573,6 +593,12 @@ export default function Home() {
     setActivityType("단체");
     setShowForm(false);
   };
+
+  /*
+   * =========================
+   * 수정
+   * =========================
+   */
 
   const startEdit = (
     event: Event
@@ -612,6 +638,12 @@ export default function Home() {
     });
   };
 
+  /*
+   * =========================
+   * 기록 저장
+   * =========================
+   */
+
   const addEvent = async () => {
     console.log(
       "현재 로그인 사용자:",
@@ -620,7 +652,7 @@ export default function Home() {
 
     if (!user) {
       alert(
-        "관리자 로그인 후 이용해주세요."
+        "운영자 로그인 후 이용해주세요."
       );
       return;
     }
@@ -637,6 +669,10 @@ export default function Home() {
     }
 
     try {
+      /*
+       * 수정
+       */
+
       if (editingId !== null) {
         const current =
           events.find(
@@ -739,6 +775,10 @@ export default function Home() {
         return;
       }
 
+      /*
+       * 새 기록
+       */
+
       const { data, error } =
         await supabase
           .from("timeline")
@@ -839,12 +879,18 @@ export default function Home() {
     }
   };
 
+  /*
+   * =========================
+   * 기록 삭제
+   * =========================
+   */
+
   const deleteEvent = async (
     event: Event
   ) => {
     if (!user) {
       alert(
-        "관리자 로그인 후 이용해주세요."
+        "운영자 로그인 후 이용해주세요."
       );
       return;
     }
@@ -895,11 +941,17 @@ export default function Home() {
     }
   };
 
+  /*
+   * =========================
+   * 사진 삭제
+   * =========================
+   */
+
   const deleteEventImage =
     async (event: Event) => {
       if (!user) {
         alert(
-          "관리자 로그인 후 이용해주세요."
+          "운영자 로그인 후 이용해주세요."
         );
         return;
       }
@@ -943,11 +995,17 @@ export default function Home() {
       }
     };
 
+  /*
+   * =========================
+   * 중요
+   * =========================
+   */
+
   const toggleImportant =
     async (event: Event) => {
       if (!user) {
         alert(
-          "관리자 로그인 후 이용해주세요."
+          "운영자 로그인 후 이용해주세요."
         );
         return;
       }
@@ -982,11 +1040,17 @@ export default function Home() {
       );
     };
 
+  /*
+   * =========================
+   * 고정
+   * =========================
+   */
+
   const togglePinned =
     async (event: Event) => {
       if (!user) {
         alert(
-          "관리자 로그인 후 이용해주세요."
+          "운영자 로그인 후 이용해주세요."
         );
         return;
       }
@@ -1020,6 +1084,12 @@ export default function Home() {
         )
       );
     };
+
+  /*
+   * =========================
+   * 필터
+   * =========================
+   */
 
   const filteredEvents =
     useMemo(() => {
@@ -1084,7 +1154,85 @@ export default function Home() {
     ).slice(0, 3);
   }, [events]);
 
+  const timelineGroups = useMemo(() => {
+    const groups = new Map<string, Event[]>();
+
+    filteredEvents.forEach((event) => {
+      const key = event.date.slice(0, 7);
+      const existing = groups.get(key) || [];
+      existing.push(event);
+      groups.set(key, existing);
+    });
+
+    return Array.from(groups.entries()).map(([key, groupEvents]) => ({
+      key,
+      label: getMonthLabel(groupEvents[0]?.date || key),
+      events: groupEvents,
+    }));
+  }, [filteredEvents]);
+
+  useEffect(() => {
+    if (timelineGroups.length === 0) return;
+    setExpandedMonths((current) => {
+      if (current.size > 0) return current;
+      return new Set([timelineGroups[0].key]);
+    });
+  }, [timelineGroups]);
+
+  const timelineYears = useMemo(() => {
+    return Array.from(
+      new Set(timelineGroups.map((group) => group.key.slice(0, 4)))
+    );
+  }, [timelineGroups]);
+
+  const toggleMonth = (monthKey: string) => {
+    setExpandedMonths((current) => {
+      const next = new Set(current);
+      if (next.has(monthKey)) next.delete(monthKey);
+      else next.add(monthKey);
+      return next;
+    });
+  };
+
+  const toggleYear = (year: string) => {
+    setExpandedMonths((current) => {
+      const next = new Set(current);
+      const yearGroups = timelineGroups.filter((group) =>
+        group.key.startsWith(year)
+      );
+      const allExpanded = yearGroups.every((group) => next.has(group.key));
+      yearGroups.forEach((group) => {
+        if (allExpanded) next.delete(group.key);
+        else next.add(group.key);
+      });
+      return next;
+    });
+  };
+
+  const jumpToMonth = (monthKey: string) => {
+    setExpandedMonths((current) => {
+      const next = new Set(current);
+      next.add(monthKey);
+      return next;
+    });
+    window.setTimeout(() => {
+      document.getElementById(`month-${monthKey}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 50);
+  };
+
   const scrollToEvent = (id: number) => {
+    const target = events.find((event) => event.id === id);
+    if (target) {
+      setExpandedMonths((current) => {
+        const next = new Set(current);
+        next.add(target.date.slice(0, 7));
+        return next;
+      });
+    }
+
     setSearch("");
     setFilter("all");
     setHighlightedEventId(id);
@@ -1101,24 +1249,6 @@ export default function Home() {
     window.setTimeout(() => {
       setHighlightedEventId(null);
     }, 1800);
-  };
-
-  const jumpToTimelineDate = (value: string) => {
-    setTimelineDate(value);
-
-    if (!value) return;
-
-    const target = events
-      .filter((event) => event.date === value)
-      .sort((a, b) => {
-        const timeA = a.time || "00:00";
-        const timeB = b.time || "00:00";
-        return timeA.localeCompare(timeB);
-      })[0];
-
-    if (!target) return;
-
-    scrollToEvent(target.id);
   };
 
   const birthdayData =
@@ -1139,32 +1269,9 @@ export default function Home() {
   const isBirthdayToday =
     Boolean(birthdayToday);
 
-  useEffect(() => {
-    if (
-      !is365Days &&
-      !isBirthdayToday
-    ) {
-      setShowSpecialCelebration(false);
-      return;
-    }
-
-    setShowSpecialCelebration(true);
-
-    const timer =
-      window.setTimeout(() => {
-        setShowSpecialCelebration(false);
-      }, 10000);
-
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [
-    is365Days,
-    isBirthdayToday,
-  ]);
-
   const isSpecialDay =
-    showSpecialCelebration;
+    is365Days ||
+    isBirthdayToday;
 
   const hadesDays =
     getHadesDays();
@@ -1172,225 +1279,144 @@ export default function Home() {
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-[#030712] text-white">
 
+      {/* =========================
+          HADES SIDE IMAGES
+          ========================= */}
+      <div
+        className="pointer-events-none absolute left-1/2 top-[180px] z-0 hidden -translate-x-1/2 2xl:block"
+        style={{ width: "calc(100% - 40px)", maxWidth: "1400px" }}
+      >
+        <img
+          src="/hades-left.png"
+          alt="HADES"
+          className="absolute left-0 h-[560px] w-[170px] rounded-3xl object-cover opacity-80 shadow-[0_0_30px_rgba(236,72,153,0.22)]"
+        />
+        <img
+          src="/hades-right.png"
+          alt="HADES"
+          className="absolute right-0 h-[560px] w-[170px] rounded-3xl object-cover opacity-80 shadow-[0_0_30px_rgba(34,211,238,0.18)]"
+        />
+      </div>
+
+      {/* =========================
+          SPECIAL DAY FIREWORKS
+          ========================= */}
+
       {isSpecialDay && (
-        <div
-          className={`pointer-events-none fixed inset-0 z-[100] overflow-hidden ${
-            is365Days
-              ? "anniversary-celebration"
-              : ""
-          }`}
-        >
+        <div className="pointer-events-none fixed inset-0 z-[100] overflow-hidden">
 
-          {is365Days && (
-            <>
-              <div className="anniversary-glow absolute inset-0" />
+          <div className="absolute inset-0 bg-black/[0.08]" />
 
-              <div className="anniversary-light absolute left-1/2 top-1/2 h-[10px] w-[10px] -translate-x-1/2 -translate-y-1/2 rounded-full" />
-
-              <div className="anniversary-particles absolute inset-0">
-                {Array.from({
-                  length: 28,
-                }).map((_, index) => (
-                  <span
-                    key={index}
-                    className={`anniversary-particle anniversary-particle-${index + 1}`}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-
-          <div className="absolute inset-0 bg-black/[0.12]" />
-
-          <div
-            className={`firework firework-1 ${
-              is365Days
-                ? "anniversary-firework"
-                : ""
-            }`}
-          >
+          <div className="firework firework-1">
             {Array.from({
               length: 12,
             }).map((_, index) => (
-              <span key={index} />
+              <span
+                key={index}
+              />
             ))}
           </div>
 
-          <div
-            className={`firework firework-2 ${
-              is365Days
-                ? "anniversary-firework"
-                : ""
-            }`}
-          >
+          <div className="firework firework-2">
             {Array.from({
               length: 12,
             }).map((_, index) => (
-              <span key={index} />
+              <span
+                key={index}
+              />
             ))}
           </div>
 
-          <div
-            className={`firework firework-3 ${
-              is365Days
-                ? "anniversary-firework"
-                : ""
-            }`}
-          >
+          <div className="firework firework-3">
             {Array.from({
               length: 12,
             }).map((_, index) => (
-              <span key={index} />
+              <span
+                key={index}
+              />
             ))}
           </div>
 
-          {is365Days && (
-            <>
-              <div className="firework firework-4 anniversary-firework">
-                {Array.from({
-                  length: 12,
-                }).map((_, index) => (
-                  <span key={index} />
-                ))}
-              </div>
+          <div className="absolute inset-x-4 top-[24%] flex justify-center">
 
-              <div className="firework firework-5 anniversary-firework">
-                {Array.from({
-                  length: 12,
-                }).map((_, index) => (
-                  <span key={index} />
-                ))}
-              </div>
-            </>
-          )}
+            <div className="rounded-3xl border border-white/15 bg-[#080b18]/90 px-6 py-5 text-center shadow-2xl backdrop-blur-xl sm:px-8 sm:py-6">
 
-          <div
-            className={`absolute inset-x-4 top-[22%] flex justify-center ${
-              is365Days
-                ? "anniversary-card-wrap"
-                : ""
-            }`}
-          >
-
-            {is365Days ? (
-              <div className="anniversary-card relative w-full max-w-xl overflow-hidden rounded-[2rem] border border-white/20 bg-[#080b18]/90 px-6 py-8 text-center shadow-[0_0_80px_rgba(168,85,247,0.35)] backdrop-blur-2xl sm:px-10 sm:py-10">
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setShowSpecialCelebration(false)
-                  }
-                  className="pointer-events-auto absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10 text-xl font-bold leading-none text-white/80 shadow-lg backdrop-blur-md transition hover:bg-white/20 hover:text-white sm:right-4 sm:top-4"
-                  aria-label="닫기"
-                >
-                  ×
-                </button>
-
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(34,211,238,0.18),transparent_45%),radial-gradient(circle_at_50%_100%,rgba(168,85,247,0.18),transparent_45%)]" />
-
-                <div className="relative">
-
-                  <div className="anniversary-crown text-4xl sm:text-5xl">
-                    ✦
-                  </div>
-
-                  <p className="mt-2 text-[10px] font-black tracking-[0.45em] text-cyan-300 sm:text-xs">
+              {is365Days ? (
+                <>
+                  <p className="text-[10px] font-black tracking-[0.35em] text-cyan-300">
                     HADES ANNIVERSARY
                   </p>
 
-                  <p className="anniversary-title mt-3 text-4xl font-black tracking-[-0.04em] sm:text-6xl">
-                    HAPPY 1st
+                  <p className="mt-2 text-3xl font-black sm:text-5xl">
+                    1ST ANNIVERSARY
                   </p>
 
-                  <p className="anniversary-title anniversary-title-delay mt-3 text-3xl font-black tracking-[-0.03em] text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-white to-fuchsia-300 sm:text-5xl">
-                    ANNIVERSARY
+                  <p className="mt-2 text-xs font-bold text-slate-400 sm:text-sm">
+                    HADES와 함께한 1년
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-[10px] font-black tracking-[0.35em] text-pink-300">
+                    HAPPY BIRTHDAY
                   </p>
 
-                  <div className="anniversary-days mt-5">
-                    <span className="text-6xl font-black tracking-[-0.05em] text-white drop-shadow-[0_0_25px_rgba(255,255,255,0.35)] sm:text-8xl">
-                      365
-                    </span>
-
-                    <span className="ml-2 text-2xl font-black tracking-widest text-cyan-300 sm:text-4xl">
-                      DAYS
-                    </span>
-                  </div>
-
-                  <div className="mx-auto mt-5 h-px w-32 bg-gradient-to-r from-transparent via-white/50 to-transparent" />
-
-                  <p className="mt-5 text-sm font-bold text-slate-300 sm:text-base">
-                    HADES와 함께한 첫 번째 1년
+                  <p className="mt-2 text-3xl font-black sm:text-5xl">
+                    {birthdayToday?.name}
                   </p>
 
-                  <p className="mt-2 text-[11px] font-medium text-slate-500 sm:text-xs">
-                    FROM HELL TO THE STAGE
+                  <p className="mt-2 text-xs font-bold text-slate-400 sm:text-sm">
+                    생일을 축하합니다
                   </p>
+                </>
+              )}
 
-                  <div className="mt-6 flex justify-center gap-5 text-xl sm:text-2xl">
-                    <span className="anniversary-star">
-                      ✦
-                    </span>
-
-                    <span className="anniversary-star anniversary-star-2">
-                      ✦
-                    </span>
-
-                    <span className="anniversary-star anniversary-star-3">
-                      ✦
-                    </span>
-                  </div>
-
-                </div>
+              <div className="mt-3 text-xl tracking-[0.5em]">
+                ✦ ✦ ✦
               </div>
-            ) : (
-              <div className="relative rounded-3xl border border-white/15 bg-[#080b18]/90 px-6 py-5 text-center shadow-2xl backdrop-blur-xl sm:px-8 sm:py-6">
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    setShowSpecialCelebration(false)
-                  }
-                  className="pointer-events-auto absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10 text-xl font-bold leading-none text-white/80 shadow-lg backdrop-blur-md transition hover:bg-white/20 hover:text-white"
-                  aria-label="닫기"
-                >
-                  ×
-                </button>
-
-                <p className="text-[10px] font-black tracking-[0.35em] text-pink-300">
-                  HAPPY BIRTHDAY
-                </p>
-
-                <p className="mt-2 text-3xl font-black sm:text-5xl">
-                  {birthdayToday?.name}
-                </p>
-
-                <p className="mt-2 text-xs font-bold text-slate-400 sm:text-sm">
-                  생일을 축하합니다
-                </p>
-
-                <div className="mt-3 text-xl tracking-[0.5em]">
-                  ✦ ✦ ✦
-                </div>
-
-              </div>
-            )}
-
+            </div>
           </div>
         </div>
       )}
 
-      <div className="hades-side-art pointer-events-none fixed inset-0 z-0 hidden lg:block">
-        <img
-          src="/hades-left.png"
-          alt=""
-          className="hades-side-left"
-        />
-        <img
-          src="/hades-right.png"
-          alt=""
-          className="hades-side-right"
-        />
-      </div>
+      {/* =========================
+          365 DAYS
+          ========================= */}
+
+      {is365Days && (
+        <div className="pointer-events-none fixed inset-0 z-[90] overflow-hidden">
+
+          <div className="absolute inset-0 bg-purple-500/[0.08] backdrop-blur-[1px]" />
+
+          <div className="absolute inset-x-4 top-[38%] mx-auto max-w-xl text-center">
+
+            <div className="rounded-[2rem] border border-white/15 bg-[#080b18]/90 px-6 py-8 shadow-2xl backdrop-blur-xl">
+
+              <p className="text-xs font-black tracking-[0.4em] text-cyan-300">
+                FROM HELL TO THE STAGE
+              </p>
+
+              <div className="mt-3 text-5xl font-black sm:text-7xl">
+                365 DAYS
+              </div>
+
+              <p className="mt-3 text-sm font-bold text-slate-400">
+                HADES와 함께한 1년
+              </p>
+
+              <div className="mt-5 text-2xl">
+                ✦ ✦ ✦
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================
+          배경
+          ========================= */}
 
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
 
@@ -1409,6 +1435,10 @@ export default function Home() {
         <div className="absolute inset-0 opacity-30 [background-image:radial-gradient(circle,white_1px,transparent_1px)] [background-size:55px_55px]" />
 
       </div>
+
+      {/* =========================
+          HEADER
+          ========================= */}
 
       <header className="sticky top-0 z-30 border-b border-white/10 bg-[#030712]/75 backdrop-blur-2xl">
 
@@ -1443,7 +1473,7 @@ export default function Home() {
             </div>
 
             <p className="mt-3 text-xs font-medium text-slate-400 sm:text-sm">
-              The Journey of HADES by.코코몽
+              The Journey of HADES
             </p>
 
             {user ? (
@@ -1455,7 +1485,7 @@ export default function Home() {
                 }}
                 className="mt-3 rounded-xl border border-pink-400/20 bg-pink-400/10 px-4 py-2 text-xs font-bold text-pink-300"
               >
-                관리자 로그아웃
+                운영자 로그아웃
               </button>
             ) : (
               <button
@@ -1463,12 +1493,12 @@ export default function Home() {
                 onClick={async () => {
                   const email =
                     window.prompt(
-                      "관리자 이메일"
+                      "운영자 이메일"
                     );
 
                   const password =
                     window.prompt(
-                      "관리자 비밀번호"
+                      "운영자 비밀번호"
                     );
 
                   if (
@@ -1494,7 +1524,7 @@ export default function Home() {
                 }}
                 className="mt-3 rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-xs font-bold text-cyan-300"
               >
-                🔐 관리자 로그인
+                🔐 운영자 로그인
               </button>
             )}
 
@@ -1519,7 +1549,11 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="relative z-10 mx-auto max-w-5xl px-4 py-7 sm:py-10">
+      <div className="mx-auto max-w-5xl px-4 py-7 sm:py-10">
+
+        {/* =========================
+            INTRO
+            ========================= */}
 
         <div className="mb-7 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.045] backdrop-blur-xl">
 
@@ -1534,12 +1568,12 @@ export default function Home() {
                 </p>
 
                 <h2 className="mt-2 text-2xl font-black sm:text-3xl">
-                  "From Hell to the Stage"
+                  Every Moment, Every Stage
                 </h2>
 
                 <p className="mt-3 text-sm leading-6 text-slate-400 sm:text-base sm:leading-7">
                   HADES의 시작부터 지금까지,
-                  모든 순간을 기록합니다.
+                  모든 순간을 기록합니다. by 코코몽
                 </p>
 
                 <div className="mt-5 flex flex-col gap-2 sm:flex-row">
@@ -1575,28 +1609,36 @@ export default function Home() {
 
               </div>
 
-              <div className="hades-since-card rounded-2xl border border-cyan-300/50 bg-purple-500/10 p-5 text-center sm:min-w-[230px]">
+              <div className="hades-since-neon relative rounded-2xl border-2 border-pink-400/90 bg-pink-500/[0.07] p-5 text-center sm:min-w-[230px]">
 
-                <p className="text-[10px] font-black tracking-[0.3em] text-purple-300">
-                  HADES SINCE
-                </p>
+                <div className="hades-neon-spark pointer-events-none absolute inset-[-2px] rounded-2xl border-2 border-pink-300" />
 
-                <p className="mt-1 text-xs font-bold text-slate-500">
-                  2025.09.05
-                </p>
+                <div className="relative z-10">
+                  <p className="text-[10px] font-black tracking-[0.3em] text-pink-200">
+                    HADES SINCE
+                  </p>
 
-                <div className="mt-2 text-4xl font-black">
-                  DAY {hadesDays}
+                  <p className="mt-1 text-xs font-bold text-slate-400">
+                    2025.09.05
+                  </p>
+
+                  <div className="mt-2 text-4xl font-black text-white">
+                    DAY {hadesDays}
+                  </div>
+
+                  <p className="mt-1 text-[11px] font-bold text-slate-400">
+                    함께한 시간
+                  </p>
                 </div>
-
-                <p className="mt-1 text-[11px] font-bold text-slate-500">
-                  함께한 시간
-                </p>
 
               </div>
 
             </div>
           </div>
+
+          {/* =========================
+              생일
+              ========================= */}
 
           <div className="border-t border-white/10 bg-black/10 p-5 sm:p-7">
 
@@ -1616,12 +1658,9 @@ export default function Home() {
 
               {birthdayData.map(
                 (member) => (
-                  <a
+                  <div
                     key={member.name}
-                    href={member.channelUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`block rounded-2xl border p-3 transition hover:-translate-y-0.5 hover:brightness-110 ${member.color}`}
+                    className={`rounded-2xl border p-3 ${member.color}`}
                   >
 
                     <div className="flex items-center gap-2">
@@ -1662,17 +1701,17 @@ export default function Home() {
 
                     </div>
 
-                    <p className="mt-2 text-[9px] font-bold opacity-40">
-                      멤버 클릭 시 방송국으로 이동합니다
-                    </p>
-
-                  </a>
+                  </div>
                 )
               )}
 
             </div>
           </div>
         </div>
+
+        {/* =========================
+            STATS
+            ========================= */}
 
         <div className="mb-7 grid grid-cols-3 gap-2 sm:gap-4">
 
@@ -1714,71 +1753,53 @@ export default function Home() {
 
         </div>
 
+        {/* =========================
+            RECENT HIGHLIGHTS
+            ========================= */}
+
         {pinnedEvents.length > 0 && (
           <section className="mb-7">
-
             <div className="mb-4 flex items-end justify-between gap-3 px-1">
-
               <div>
-
                 <p className="text-[10px] font-black tracking-[0.28em] text-yellow-300">
                   RECENT HIGHLIGHTS
                 </p>
-
                 <h2 className="mt-1 text-xl font-black sm:text-2xl">
                   HADES의 주요 순간
                 </h2>
-
               </div>
-
               <span className="hidden text-[10px] font-bold text-slate-500 sm:block">
                 고정된 기록에서 자동으로 표시됩니다
               </span>
-
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-
               {pinnedEvents.map((event) => (
                 <button
                   key={event.id}
                   type="button"
-                  onClick={() =>
-                    scrollToEvent(event.id)
-                  }
+                  onClick={() => scrollToEvent(event.id)}
                   className="group overflow-hidden rounded-2xl border border-yellow-400/15 bg-[#080b18]/75 text-left backdrop-blur-xl transition duration-200 hover:-translate-y-0.5 hover:border-yellow-400/30 hover:bg-yellow-400/[0.06]"
                 >
-
                   <div className="border-b border-white/10 px-4 py-3">
-
                     <div className="flex items-center justify-between gap-2">
-
                       <span className="rounded-lg border border-yellow-400/20 bg-yellow-400/10 px-2 py-1 text-[10px] font-black text-yellow-300">
                         📌 HIGHLIGHT
                       </span>
-
                       <span className="text-[10px] font-bold text-slate-500">
                         {event.date}
                       </span>
-
                     </div>
-
                   </div>
 
                   <div className="p-4">
-
                     <div className="mb-2 flex flex-wrap gap-1.5">
-
-                      <span
-                        className={`rounded-md border px-2 py-0.5 text-[10px] font-black ${categoryStyle[event.category]}`}
-                      >
+                      <span className={`rounded-md border px-2 py-0.5 text-[10px] font-black ${categoryStyle[event.category]}`}>
                         {event.category}
                       </span>
-
                       <span className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-bold text-slate-400">
                         {event.activityType}
                       </span>
-
                     </div>
 
                     <h3 className="break-words text-sm font-black leading-6 text-white transition group-hover:text-cyan-200">
@@ -1796,15 +1817,16 @@ export default function Home() {
                     <p className="mt-3 text-[10px] font-black text-cyan-400/70">
                       기록으로 이동 →
                     </p>
-
                   </div>
-
                 </button>
               ))}
-
             </div>
           </section>
         )}
+
+        {/* =========================
+            FORM
+            ========================= */}
 
         {showForm && user && (
           <div className="mb-8 overflow-hidden rounded-3xl border border-purple-400/20 bg-[#0b0a18]/90 backdrop-blur-xl">
@@ -1955,6 +1977,8 @@ export default function Home() {
 
                 </div>
               </div>
+
+              {/* 이미지 */}
 
               <div className="mt-5">
 
@@ -2128,6 +2152,10 @@ export default function Home() {
           </div>
         )}
 
+        {/* =========================
+            SEARCH
+            ========================= */}
+
         <div className="mb-4">
 
           <input
@@ -2144,46 +2172,11 @@ export default function Home() {
 
         </div>
 
+        {/* =========================
+            FILTER
+            ========================= */}
+
         <div className="mb-8 rounded-3xl border border-white/10 bg-white/[0.045] p-4 backdrop-blur-xl">
-
-          <div className="mb-4 rounded-2xl border border-cyan-400/10 bg-cyan-400/[0.035] p-3 sm:p-4">
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-
-              <div>
-                <p className="text-[10px] font-black tracking-[0.22em] text-cyan-300">
-                  TIMELINE CALENDAR
-                </p>
-                <p className="mt-1 text-xs font-bold text-slate-500">
-                  날짜를 선택하면 해당 날짜의 기록으로 이동합니다.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="date"
-                  value={timelineDate}
-                  onChange={(e) =>
-                    jumpToTimelineDate(e.target.value)
-                  }
-                  className="rounded-xl border border-cyan-400/20 bg-white/5 px-3 py-2 text-xs font-bold text-white outline-none"
-                  aria-label="타임라인 날짜 선택"
-                />
-
-                {timelineDate && (
-                  <button
-                    type="button"
-                    onClick={() => setTimelineDate("")}
-                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-slate-400"
-                  >
-                    초기화
-                  </button>
-                )}
-              </div>
-
-            </div>
-
-          </div>
 
           <div className="flex flex-wrap gap-2">
 
@@ -2301,914 +2294,443 @@ export default function Home() {
           </div>
         </div>
 
+        {/* =========================
+            TIMELINE
+            ========================= */}
+
         {loading ? (
           <div className="rounded-3xl border border-white/10 bg-white/[0.045] px-5 py-16 text-center">
-
-            <div className="text-3xl">
-              ⏳
-            </div>
-
+            <div className="text-3xl">⏳</div>
             <p className="mt-4 text-sm font-bold text-slate-400">
               기록을 불러오는 중...
             </p>
-
           </div>
-        ) : filteredEvents.length ===
-          0 ? (
+        ) : filteredEvents.length === 0 ? (
           <div className="rounded-3xl border border-white/10 bg-white/[0.045] px-5 py-14 text-center">
-
-            <div className="text-5xl">
-              🔎
-            </div>
-
-            <h3 className="mt-4 text-lg font-black">
-              기록을 찾을 수 없어요
-            </h3>
-
-            <p className="mt-2 text-sm text-slate-500">
-              새로운 기록을 추가해보세요.
-            </p>
-
+            <div className="text-5xl">🔎</div>
+            <h3 className="mt-4 text-lg font-black">기록을 찾을 수 없어요</h3>
+            <p className="mt-2 text-sm text-slate-500">새로운 기록을 추가해보세요.</p>
           </div>
         ) : (
-          <section className="relative">
+          <>
+            <section className="mb-6 rounded-3xl border border-white/10 bg-white/[0.045] p-4 backdrop-blur-xl">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-black tracking-[0.28em] text-cyan-300">
+                    TIMELINE NAVIGATION
+                  </p>
+                  <p className="mt-1 text-xs font-bold text-slate-500">
+                    원하는 연도와 월로 바로 이동하세요
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setExpandedMonths(new Set(timelineGroups.map((group) => group.key)));
+                  }}
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[11px] font-black text-slate-300"
+                >
+                  전체 펼치기
+                </button>
+              </div>
 
-            <div className="absolute bottom-5 left-[7px] top-5 w-px bg-gradient-to-b from-pink-400 via-indigo-400 via-lime-400 via-purple-400 to-yellow-300" />
-
-            <div className="space-y-12 sm:space-y-10">
-
-              {filteredEvents.map(
-                (
-                  event,
-                  index
-                ) => {
-                  const previous =
-                    filteredEvents[
-                      index - 1
-                    ];
-
-                  const currentMonth =
-                    getMonthLabel(
-                      event.date
-                    );
-
-                  const previousMonth =
-                    previous
-                      ? getMonthLabel(
-                          previous.date
-                        )
-                      : null;
-
-                  const showMonth =
-                    currentMonth !==
-                    previousMonth;
-
-                  const youtubeId =
-                    getYoutubeId(
-                      event.youtubeUrl
-                    );
-
-                  const thumbnail =
-                    getYoutubeThumbnail(
-                      event.youtubeUrl
-                    );
-
+              <div className="mt-4 flex flex-wrap gap-2">
+                {timelineYears.map((year) => {
+                  const yearGroups = timelineGroups.filter((group) => group.key.startsWith(year));
+                  const allExpanded = yearGroups.every((group) => expandedMonths.has(group.key));
                   return (
-                    <div
-                      key={
-                        event.id
-                      }
-                      id={`event-${event.id}`}
-                    >
-
-                      {showMonth && (
-                        <div className="relative mb-5 pl-6 sm:pl-9">
-
-                          <span className="inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-sm font-black text-cyan-300">
-                            📅{" "}
-                            {
-                              currentMonth
-                            }
-                          </span>
-
-                        </div>
-                      )}
-
-                      <article className="relative pl-6 sm:pl-9">
-
-                        <div
-                          className={`absolute left-[-1px] top-2 h-4 w-4 rounded-full border-4 border-[#030712] shadow-[0_0_12px_currentColor] ${
-                            [
-                              "bg-pink-300 text-pink-300",
-                              "bg-indigo-300 text-indigo-300",
-                              "bg-purple-400 text-purple-400",
-                              "bg-lime-400 text-lime-400",
-                              "bg-yellow-300 text-yellow-300",
-                            ][
-                              index %
-                                5
-                            ]
-                          }`}
-                        />
-
-                        <div className="mb-4 flex flex-wrap items-center gap-1.5 sm:mb-3 sm:gap-2">
-
-                          <span className="rounded-lg border border-cyan-400/15 bg-cyan-400/10 px-2 py-1 text-xs font-black text-cyan-300">
-                            {
-                              event.date
-                            }
-                          </span>
-
-                          <span className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs font-bold text-slate-300">
-                            🕐{" "}
-                            {
-                              event.time
-                            }
-                          </span>
-
-                          <span
-                            className={`rounded-lg border px-2.5 py-1 text-xs font-black ${categoryStyle[event.category]}`}
-                          >
-                            {
-                              event.category
-                            }
-                          </span>
-
-                          <span
-                            className={`rounded-lg border px-2 py-1 text-xs font-black ${
-                              event.activityType ===
-                              "개인"
-                                ? "border-pink-400/20 bg-pink-400/10 text-pink-300"
-                                : "border-cyan-400/20 bg-cyan-400/10 text-cyan-300"
-                            }`}
-                          >
-                            {event.activityType ===
-                            "개인"
-                              ? "👤 개인"
-                              : "👥 단체"}
-                          </span>
-
-                          {event.important && (
-                            <span className="rounded-lg border border-amber-400/20 bg-amber-400/10 px-2.5 py-1 text-xs font-black text-amber-300">
-                              ⭐ 중요
-                            </span>
-                          )}
-
-                        </div>
-
-                        <div
-                          className={`overflow-hidden rounded-3xl border bg-[#080b18]/80 transition-all duration-500 ${
-                            highlightedEventId === event.id
-                              ? "border-cyan-300/70 ring-2 ring-cyan-400/40 shadow-[0_0_35px_rgba(34,211,238,0.22)]"
-                              : event.important
-                                ? "border-amber-400/30"
-                                : "border-white/10"
+                    <div key={year} className="flex flex-wrap items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => toggleYear(year)}
+                        className={`rounded-xl px-3 py-2 text-xs font-black ${
+                          allExpanded ? "bg-white text-black" : "bg-white/5 text-slate-300"
+                        }`}
+                      >
+                        {year}
+                      </button>
+                      {yearGroups.map((group) => (
+                        <button
+                          key={group.key}
+                          type="button"
+                          onClick={() => jumpToMonth(group.key)}
+                          className={`rounded-xl border px-2.5 py-2 text-[11px] font-bold transition ${
+                            expandedMonths.has(group.key)
+                              ? "border-cyan-400/30 bg-cyan-400/10 text-cyan-300"
+                              : "border-white/10 bg-white/5 text-slate-500"
                           }`}
                         >
+                          {Number(group.key.slice(5, 7))}월
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
 
-                          <div className="p-4 sm:p-6">
+            <section className="relative">
+              <div className="absolute bottom-5 left-[7px] top-5 w-px bg-gradient-to-b from-pink-400 via-indigo-400 via-lime-400 via-purple-400 to-yellow-300" />
 
-                            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="space-y-5 sm:space-y-6">
+                {timelineGroups.map((group) => {
+                  const isExpanded = expandedMonths.has(group.key);
+                  const firstEvent = group.events[0];
 
-                              <h2 className="min-w-0 break-words text-[17px] font-black leading-[1.6] tracking-[-0.01em] sm:text-xl sm:leading-snug">
-                                {
-                                  event.title
-                                }
-                              </h2>
+                  return (
+                    <div key={group.key} id={`month-${group.key}`} className="scroll-mt-28">
+                      <button
+                        type="button"
+                        onClick={() => toggleMonth(group.key)}
+                        className="relative z-10 mb-3 flex w-full items-center justify-between rounded-2xl border border-cyan-400/15 bg-[#080b18]/80 px-4 py-3 text-left backdrop-blur-xl transition hover:border-cyan-400/30 hover:bg-cyan-400/[0.05] sm:px-5"
+                      >
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span className="text-lg">{isExpanded ? "▼" : "▶"}</span>
+                          <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1.5 text-sm font-black text-cyan-300">
+                            📅 {group.label}
+                          </span>
+                          <span className="text-[11px] font-bold text-slate-500">
+                            {group.events.length}개 기록
+                          </span>
+                        </div>
+                        <span className="hidden text-[10px] font-bold text-slate-600 sm:block">
+                          {firstEvent?.date}
+                        </span>
+                      </button>
 
-                              {user && (
-                                <div className="flex shrink-0 flex-wrap gap-2">
+                      {isExpanded && (
+                        <div className="space-y-8 sm:space-y-9">
+                          {group.events.map((event, index) => {
+                            const youtubeId = getYoutubeId(event.youtubeUrl);
+                            const thumbnail = getYoutubeThumbnail(event.youtubeUrl);
 
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      togglePinned(
-                                        event
-                                      )
-                                    }
-                                    className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${
-                                      event.pinned
-                                        ? "border-yellow-400/20 bg-yellow-400/10 text-yellow-300"
-                                        : "border-white/10 bg-white/5 text-slate-500"
+                            return (
+                              <div key={event.id} id={`event-${event.id}`}>
+                                <article className="relative pl-6 sm:pl-9">
+                                  <div
+                                    className={`absolute left-[-1px] top-2 h-4 w-4 rounded-full border-4 border-[#030712] shadow-[0_0_12px_currentColor] ${
+                                      [
+                                        "bg-pink-300 text-pink-300",
+                                        "bg-indigo-300 text-indigo-300",
+                                        "bg-purple-400 text-purple-400",
+                                        "bg-lime-400 text-lime-400",
+                                        "bg-yellow-300 text-yellow-300",
+                                      ][index % 5]
                                     }`}
-                                  >
-                                    📌
-                                  </button>
+                                  />
 
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      toggleImportant(
-                                        event
-                                      )
-                                    }
-                                    className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${
-                                      event.important
-                                        ? "border-amber-400/20 bg-amber-400/10 text-amber-300"
-                                        : "border-white/10 bg-white/5 text-slate-500"
-                                    }`}
-                                  >
-                                    ⭐
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      startEdit(
-                                        event
-                                      )
-                                    }
-                                    className="rounded-lg border border-cyan-400/20 bg-cyan-400/10 px-3 py-1.5 text-xs font-bold text-cyan-300"
-                                  >
-                                    수정
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      deleteEvent(
-                                        event
-                                      )
-                                    }
-                                    className="rounded-lg border border-pink-400/20 bg-pink-400/10 px-3 py-1.5 text-xs font-bold text-pink-300"
-                                  >
-                                    삭제
-                                  </button>
-
-                                </div>
-                              )}
-
-                            </div>
-
-                            <div className="mt-5 h-px bg-gradient-to-r from-fuchsia-400/30 via-cyan-400/20 to-transparent" />
-
-                            {event.description && (
-                              <p className="mt-5 whitespace-pre-wrap break-words text-[14px] leading-[1.8] text-slate-300 sm:mt-4 sm:text-[15px] sm:leading-8">
-                                {
-                                  event.description
-                                }
-                              </p>
-                            )}
-
-                            {event.imageUrl && (
-                              <div className="mt-5 overflow-hidden rounded-2xl border border-white/10 bg-black/40">
-
-                                <img
-                                  src={
-                                    event.imageUrl
-                                  }
-                                  alt={
-                                    event.title
-                                  }
-                                  className="block max-h-[650px] w-full object-contain"
-                                />
-
-                                {user && (
-                                  <div className="border-t border-white/10 p-3">
-
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        deleteEventImage(
-                                          event
-                                        )
-                                      }
-                                      className="w-full rounded-xl border border-pink-400/20 bg-pink-400/10 px-4 py-2.5 text-xs font-bold text-pink-300"
-                                    >
-                                      🗑️ 사진 삭제
-                                    </button>
-
+                                  <div className="mb-4 flex flex-wrap items-center gap-1.5 sm:mb-3 sm:gap-2">
+                                    <span className="rounded-lg border border-cyan-400/15 bg-cyan-400/10 px-2 py-1 text-xs font-black text-cyan-300">
+                                      {event.date}
+                                    </span>
+                                    <span className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs font-bold text-slate-300">
+                                      🕐 {event.time}
+                                    </span>
+                                    <span className={`rounded-lg border px-2.5 py-1 text-xs font-black ${categoryStyle[event.category]}`}>
+                                      {event.category}
+                                    </span>
+                                    <span className={`rounded-lg border px-2 py-1 text-xs font-black ${event.activityType === "개인" ? "border-pink-400/20 bg-pink-400/10 text-pink-300" : "border-cyan-400/20 bg-cyan-400/10 text-cyan-300"}`}>
+                                      {event.activityType === "개인" ? "👤 개인" : "👥 단체"}
+                                    </span>
+                                    {event.pinned && (
+                                      <span className="rounded-lg border border-yellow-400/20 bg-yellow-400/10 px-2.5 py-1 text-xs font-black text-yellow-300">📌 고정</span>
+                                    )}
+                                    {event.important && (
+                                      <span className="rounded-lg border border-amber-400/20 bg-amber-400/10 px-2.5 py-1 text-xs font-black text-amber-300">⭐ 중요</span>
+                                    )}
                                   </div>
-                                )}
 
+                                  <div className={`overflow-hidden rounded-3xl border bg-[#080b18]/80 transition-all duration-500 ${highlightedEventId === event.id ? "border-cyan-300/70 ring-2 ring-cyan-400/40 shadow-[0_0_35px_rgba(34,211,238,0.22)]" : event.important ? "border-amber-400/30" : "border-white/10"}`}>
+                                    <div className="p-4 sm:p-6">
+                                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                        <h2 className="min-w-0 break-words text-[17px] font-black leading-[1.6] tracking-[-0.01em] sm:text-xl sm:leading-snug">
+                                          {event.title}
+                                        </h2>
+                                        {user && (
+                                          <div className="flex shrink-0 flex-wrap gap-2">
+                                            <button type="button" onClick={() => togglePinned(event)} className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${event.pinned ? "border-yellow-400/20 bg-yellow-400/10 text-yellow-300" : "border-white/10 bg-white/5 text-slate-500"}`}>📌</button>
+                                            <button type="button" onClick={() => toggleImportant(event)} className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${event.important ? "border-amber-400/20 bg-amber-400/10 text-amber-300" : "border-white/10 bg-white/5 text-slate-500"}`}>⭐</button>
+                                            <button type="button" onClick={() => startEdit(event)} className="rounded-lg border border-cyan-400/20 bg-cyan-400/10 px-3 py-1.5 text-xs font-bold text-cyan-300">수정</button>
+                                            <button type="button" onClick={() => deleteEvent(event)} className="rounded-lg border border-pink-400/20 bg-pink-400/10 px-3 py-1.5 text-xs font-bold text-pink-300">삭제</button>
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="mt-5 h-px bg-gradient-to-r from-fuchsia-400/30 via-cyan-400/20 to-transparent" />
+                                      {event.description && (
+                                        <p className="mt-5 whitespace-pre-wrap break-words text-[14px] leading-[1.8] text-slate-300 sm:mt-4 sm:text-[15px] sm:leading-8">{event.description}</p>
+                                      )}
+                                      {event.imageUrl && (
+                                        <div className="mt-5 overflow-hidden rounded-2xl border border-white/10 bg-black/40">
+                                          <img src={event.imageUrl} alt={event.title} loading="lazy" className="block max-h-[650px] w-full object-contain" />
+                                          {user && (
+                                            <div className="border-t border-white/10 p-3">
+                                              <button type="button" onClick={() => deleteEventImage(event)} className="w-full rounded-xl border border-pink-400/20 bg-pink-400/10 px-4 py-2.5 text-xs font-bold text-pink-300">🗑️ 사진 삭제</button>
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                      {youtubeId && thumbnail && (
+                                        <div className="mt-5 overflow-hidden rounded-2xl bg-black">
+                                          {playingVideoId === youtubeId ? (
+                                            <iframe src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&playsinline=1`} title={event.title} className="aspect-video w-full" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen />
+                                          ) : (
+                                            <button type="button" onClick={() => setPlayingVideoId(youtubeId)} className="group relative block w-full">
+                                              <img src={thumbnail} alt={`${event.title} 유튜브 썸네일`} loading="lazy" className="aspect-video w-full object-cover" />
+                                              <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                                                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-white shadow-2xl sm:h-20 sm:w-20">
+                                                  <span className="ml-1 text-2xl sm:text-3xl">▶</span>
+                                                </div>
+                                              </div>
+                                            </button>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </article>
                               </div>
-                            )}
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          </>
+        )}
 
-                            {youtubeId &&
-                              thumbnail && (
-                                <div className="mt-5 overflow-hidden rounded-2xl bg-black">
+        {/* =========================
+            FOOTER
+            ========================= */}
 
-                                  {playingVideoId ===
-                                  youtubeId ? (
-                                    <iframe
-                                      src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&playsinline=1`} 
-                                      title={ 
-                                        event.title 
-                                      } 
-                                      className="aspect-video w-full" 
-                                      allow="autoplay; encrypted-media; picture-in-picture" 
-                                      allowFullScreen 
-                                    /> 
-                                  ) : ( 
-                                    <button 
-                                      type="button" 
-                                      onClick={() => 
-                                        setPlayingVideoId( 
-                                          youtubeId 
-                                        ) 
-                                      } 
-                                      className="group relative block w-full" 
-                                    > 
- 
-                                      <img 
-                                        src={ 
-                                          thumbnail 
-                                        } 
-                                        alt={`${event.title} 유튜브 썸네일`} 
-                                        className="aspect-video w-full object-cover" 
-                                      /> 
- 
-                                      <div className="absolute inset-0 flex items-center justify-center bg-black/10"> 
- 
-                                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-white shadow-2xl sm:h-20 sm:w-20"> 
- 
-                                          <span className="ml-1 text-2xl sm:text-3xl"> 
-                                            ▶ 
-                                          </span> 
- 
-                                        </div> 
- 
-                                      </div> 
- 
-                                    </button> 
-                                  )} 
- 
-                                </div> 
-                              )} 
- 
-                          </div> 
-                        </div> 
-                      </article> 
-                    </div> 
-                  ); 
-                } 
-              )} 
- 
-            </div> 
-          </section> 
-        )} 
- 
-        <footer className="mt-14 border-t border-white/10 py-8 text-center"> 
- 
-          <p className="text-xs font-black tracking-[0.25em] text-slate-500"> 
-            FROM HELL TO THE STAGE 
-          </p> 
- 
-          <p className="mt-2 text-[11px] leading-6 text-slate-600"> 
-            본 페이지는 HADES의 활동과 순간들을 보기 편리하게 정리하기 위해 제작된 비공식 팬페이지입니다. 
-            <br /> 
-            어떠한 수익 창출이나 상업적 목적 없이, HADES를 응원하고 기록하기 위해 운영됩니다. 
-          </p> 
- 
-        </footer> 
- 
-      </div> 
- 
-      {showTopButton && ( 
-        <button 
-          type="button" 
-          onClick={() => 
-            window.scrollTo({ 
-              top: 0, 
-              behavior: "smooth", 
-            }) 
-          } 
-          className="fixed bottom-5 right-5 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-[#0b1020]/90 text-xl font-black shadow-2xl sm:bottom-7 sm:right-7 sm:h-14 sm:w-14" 
-        > 
-          ↑ 
-        </button> 
-      )} 
- 
-      <style jsx>{` 
- 
-        .hades-side-art { 
-          overflow: hidden; 
-        } 
- 
-        .hades-side-left, 
-        .hades-side-right { 
-          position: fixed; 
-          top: calc(50% + 70px); 
-          width: 220px; 
-          height: 72vh; 
-          object-fit: cover; 
-          object-position: center; 
-          transform: translateY(-50%); 
-          border-radius: 24px; 
-          box-shadow: 0 20px 60px rgba(0,0,0,0.45); 
-        } 
- 
-        .hades-side-left { 
-          left: calc(50% - 740px); 
-        } 
- 
-        .hades-side-right { 
-          right: calc(50% - 740px); 
-        } 
- 
-        @media (max-width: 1450px) { 
-          .hades-side-left, 
-          .hades-side-right { 
-            width: 200px; 
-            height: 68vh; 
-          } 
- 
-          .hades-side-left { 
-            left: 12px; 
-          } 
- 
-          .hades-side-right { 
-            right: 12px; 
-          } 
-        } 
- 
-        @media (max-width: 1200px) { 
-          .hades-side-art { 
-            display: none; 
-          } 
-        } 
- 
-        .hades-since-card { 
-          box-shadow: 
-            0 0 22px rgba(34, 211, 238, 0.28), 
-            0 0 45px rgba(34, 211, 238, 0.16), 
-            inset 0 0 18px rgba(34, 211, 238, 0.06); 
-          animation: hades-since-glow 3s ease-in-out infinite; 
-        } 
- 
-        @keyframes hades-since-glow { 
-          0%, 
-          100% { 
-            box-shadow: 
-              0 0 22px rgba(34, 211, 238, 0.25), 
-              0 0 45px rgba(34, 211, 238, 0.13), 
-              inset 0 0 18px rgba(34, 211, 238, 0.05); 
-          } 
- 
-          50% { 
-            box-shadow: 
-              0 0 30px rgba(34, 211, 238, 0.45), 
-              0 0 60px rgba(34, 211, 238, 0.25), 
-              inset 0 0 22px rgba(34, 211, 238, 0.10); 
-          } 
-        } 
- 
-        .firework { 
-          position: absolute; 
-          width: 8px; 
-          height: 8px; 
-          border-radius: 9999px; 
-          animation: firework-burst 2.4s ease-out infinite; 
-        } 
- 
-        .firework span { 
-          position: absolute; 
-          left: 50%; 
-          top: 50%; 
-          width: 3px; 
-          height: 75px; 
-          border-radius: 9999px; 
-          transform-origin: 50% 0; 
-          background: linear-gradient( 
-            to bottom, 
-            rgba(255, 255, 255, 1), 
-            rgba(168, 85, 247, 0) 
-          ); 
-        } 
- 
-        .firework span:nth-child(1) { 
-          transform: translate(-50%, 0) rotate(0deg); 
-        } 
- 
-        .firework span:nth-child(2) { 
-          transform: translate(-50%, 0) rotate(30deg); 
-        } 
- 
-        .firework span:nth-child(3) { 
-          transform: translate(-50%, 0) rotate(60deg); 
-        } 
- 
-        .firework span:nth-child(4) { 
-          transform: translate(-50%, 0) rotate(90deg); 
-        } 
- 
-        .firework span:nth-child(5) { 
-          transform: translate(-50%, 0) rotate(120deg); 
-        } 
- 
-        .firework span:nth-child(6) { 
-          transform: translate(-50%, 0) rotate(150deg); 
-        } 
- 
-        .firework span:nth-child(7) { 
-          transform: translate(-50%, 0) rotate(180deg); 
-        } 
- 
-        .firework span:nth-child(8) { 
-          transform: translate(-50%, 0) rotate(210deg); 
-        } 
- 
-        .firework span:nth-child(9) { 
-          transform: translate(-50%, 0) rotate(240deg); 
-        } 
- 
-        .firework span:nth-child(10) { 
-          transform: translate(-50%, 0) rotate(270deg); 
-        } 
- 
-        .firework span:nth-child(11) { 
-          transform: translate(-50%, 0) rotate(300deg); 
-        } 
- 
-        .firework span:nth-child(12) { 
-          transform: translate(-50%, 0) rotate(330deg); 
-        } 
- 
-        .firework-1 { 
-          left: 18%; 
-          top: 25%; 
-          animation-delay: 0s; 
-        } 
- 
-        .firework-2 { 
-          right: 18%; 
-          top: 35%; 
-          animation-delay: 0.8s; 
-        } 
- 
-        .firework-3 { 
-          left: 50%; 
-          top: 18%; 
-          animation-delay: 1.6s; 
-        } 
- 
-        .firework-4 { 
-          left: 8%; 
-          top: 48%; 
-          animation-delay: 0.4s; 
-        } 
- 
-        .firework-5 { 
-          right: 8%; 
-          top: 48%; 
-          animation-delay: 1.2s; 
-        } 
- 
-        @keyframes firework-burst { 
-          0% { 
-            opacity: 0; 
-            transform: scale(0.15); 
-          } 
- 
-          12% { 
-            opacity: 1; 
-          } 
- 
-          55% { 
-            opacity: 1; 
-            transform: scale(1); 
-          } 
- 
-          100% { 
-            opacity: 0; 
-            transform: scale(1.35); 
-          } 
-        } 
- 
-        .anniversary-celebration { 
-          animation: anniversary-fade-in 0.45s ease-out forwards; 
-        } 
- 
-        .anniversary-glow { 
-          background: 
-            radial-gradient( 
-              circle at 50% 45%, 
-              rgba(255,255,255,0.14), 
-              transparent 18% 
-            ), 
-            radial-gradient( 
-              circle at 50% 45%, 
-              rgba(34,211,238,0.14), 
-              transparent 42% 
-            ), 
-            radial-gradient( 
-              circle at 50% 45%, 
-              rgba(168,85,247,0.13), 
-              transparent 65% 
-            ); 
-          animation: anniversary-glow-pulse 2.8s ease-in-out infinite; 
-        } 
- 
-        .anniversary-light { 
-          box-shadow: 
-            0 0 40px 20px rgba(255,255,255,0.8), 
-            0 0 100px 50px rgba(34,211,238,0.45), 
-            0 0 180px 90px rgba(168,85,247,0.3); 
-          animation: anniversary-light-burst 1.8s ease-out forwards; 
-        } 
- 
-        .anniversary-card-wrap { 
-          animation: anniversary-card-enter 0.9s cubic-bezier(.16,1,.3,1) forwards; 
-        } 
- 
-        .anniversary-card { 
-          animation: anniversary-card-glow 2.5s ease-in-out infinite; 
-        } 
- 
-        .anniversary-title { 
-          animation: anniversary-title-enter 0.8s cubic-bezier(.16,1,.3,1) both; 
-        } 
- 
-        .anniversary-title-delay { 
-          animation-delay: 0.18s; 
-        } 
- 
-        .anniversary-days { 
-          animation: anniversary-days-enter 1s cubic-bezier(.16,1,.3,1) 0.35s both; 
-        } 
- 
-        .anniversary-crown { 
-          animation: anniversary-star-pop 1.2s ease-out 0.1s both; 
-          text-shadow: 
-            0 0 12px rgba(255,255,255,0.9), 
-            0 0 35px rgba(34,211,238,0.8); 
-        } 
- 
-        .anniversary-star { 
-          animation: anniversary-star-float 1.8s ease-in-out infinite; 
-          text-shadow: 
-            0 0 10px rgba(255,255,255,0.9), 
-            0 0 25px rgba(34,211,238,0.7); 
-        } 
- 
-        .anniversary-star-2 { 
-          animation-delay: 0.3s; 
-        } 
- 
-        .anniversary-star-3 { 
-          animation-delay: 0.6s; 
-        } 
- 
-        .anniversary-firework { 
-          animation-duration: 1.9s; 
-        } 
- 
-        .anniversary-particle { 
-          position: absolute; 
-          left: 50%; 
-          top: 46%; 
-          width: 4px; 
-          height: 4px; 
-          border-radius: 9999px; 
-          background: white; 
-          box-shadow: 
-            0 0 8px rgba(255,255,255,0.9), 
-            0 0 18px rgba(34,211,238,0.7); 
-          animation: 
-            anniversary-particle-burst 
-            2.4s 
-            cubic-bezier(.16,1,.3,1) 
-            forwards; 
-        } 
- 
-        .anniversary-particle:nth-child(3n) { 
-          width: 3px; 
-          height: 8px; 
-          border-radius: 2px; 
-        } 
- 
-        .anniversary-particle:nth-child(4n) { 
-          width: 6px; 
-          height: 6px; 
-        } 
- 
-        .anniversary-particle-1 { --x: -42vw; --y: -38vh; animation-delay: .05s; } 
-        .anniversary-particle-2 { --x: 39vw; --y: -32vh; animation-delay: .08s; } 
-        .anniversary-particle-3 { --x: -30vw; --y: -25vh; animation-delay: .11s; } 
-        .anniversary-particle-4 { --x: 27vw; --y: -39vh; animation-delay: .14s; } 
-        .anniversary-particle-5 { --x: -48vw; --y: -5vh; animation-delay: .17s; } 
-        .anniversary-particle-6 { --x: 47vw; --y: -8vh; animation-delay: .20s; } 
-        .anniversary-particle-7 { --x: -38vw; --y: 18vh; animation-delay: .23s; } 
-        .anniversary-particle-8 { --x: 42vw; --y: 21vh; animation-delay: .26s; } 
-        .anniversary-particle-9 { --x: -25vw; --y: 33vh; animation-delay: .29s; } 
-        .anniversary-particle-10 { --x: 30vw; --y: 34vh; animation-delay: .32s; } 
-        .anniversary-particle-11 { --x: -14vw; --y: -40vh; animation-delay: .35s; } 
-        .anniversary-particle-12 { --x: 15vw; --y: -37vh; animation-delay: .38s; } 
-        .anniversary-particle-13 { --x: -50vw; --y: 28vh; animation-delay: .41s; } 
-        .anniversary-particle-14 { --x: 50vw; --y: 29vh; animation-delay: .44s; } 
-        .anniversary-particle-15 { --x: -20vw; --y: 42vh; animation-delay: .47s; } 
-        .anniversary-particle-16 { --x: 19vw; --y: 43vh; animation-delay: .50s; } 
-        .anniversary-particle-17 { --x: -34vw; --y: 5vh; animation-delay: .53s; } 
-        .anniversary-particle-18 { --x: 35vw; --y: 7vh; animation-delay: .56s; } 
-        .anniversary-particle-19 { --x: -9vw; --y: -28vh; animation-delay: .59s; } 
-        .anniversary-particle-20 { --x: 9vw; --y: -30vh; animation-delay: .62s; } 
-        .anniversary-particle-21 { --x: -45vw; --y: -20vh; animation-delay: .65s; } 
-        .anniversary-particle-22 { --x: 45vw; --y: -19vh; animation-delay: .68s; } 
-        .anniversary-particle-23 { --x: -44vw; --y: 40vh; animation-delay: .71s; } 
-        .anniversary-particle-24 { --x: 43vw; --y: 39vh; animation-delay: .74s; } 
-        .anniversary-particle-25 { --x: -5vw; --y: 38vh; animation-delay: .77s; } 
-        .anniversary-particle-26 { --x: 6vw; --y: 40vh; animation-delay: .80s; } 
-        .anniversary-particle-27 { --x: -16vw; --y: 18vh; animation-delay: .83s; } 
-        .anniversary-particle-28 { --x: 17vw; --y: 20vh; animation-delay: .86s; } 
- 
-        @keyframes anniversary-fade-in { 
-          from { 
-            opacity: 0; 
-          } 
- 
-          to { 
-            opacity: 1; 
-          } 
-        } 
- 
-        @keyframes anniversary-glow-pulse { 
-          0%, 
-          100% { 
-            opacity: 0.55; 
-            transform: scale(0.95); 
-          } 
- 
-          50% { 
-            opacity: 1; 
-            transform: scale(1.08); 
-          } 
-        } 
- 
-        @keyframes anniversary-light-burst { 
-          0% { 
-            opacity: 0; 
-            transform: translate(-50%, -50%) scale(0.1); 
-          } 
- 
-          15% { 
-            opacity: 1; 
-          } 
- 
-          100% { 
-            opacity: 0; 
-            transform: translate(-50%, -50%) scale(28); 
-          } 
-        } 
- 
-        @keyframes anniversary-card-enter { 
-          0% { 
-            opacity: 0; 
-            transform: translateY(35px) scale(0.72); 
-          } 
- 
-          55% { 
-            opacity: 1; 
-            transform: translateY(-5px) scale(1.04); 
-          } 
- 
-          100% { 
-            opacity: 1; 
-            transform: translateY(0) scale(1); 
-          } 
-        } 
- 
-        @keyframes anniversary-card-glow { 
-          0%, 
-          100% { 
-            box-shadow: 
-              0 0 50px rgba(168,85,247,0.25), 
-              0 0 100px rgba(34,211,238,0.08); 
-          } 
- 
-          50% { 
-            box-shadow: 
-              0 0 75px rgba(168,85,247,0.4), 
-              0 0 130px rgba(34,211,238,0.16); 
-          } 
-        } 
- 
-        @keyframes anniversary-title-enter { 
-          0% { 
-            opacity: 0; 
-            transform: translateY(18px) scale(0.88); 
-          } 
- 
-          100% { 
-            opacity: 1; 
-            transform: translateY(0) scale(1); 
-          } 
-        } 
- 
-        @keyframes anniversary-days-enter { 
-          0% { 
-            opacity: 0; 
-            transform: scale(0.5); 
-          } 
- 
-          65% { 
-            opacity: 1; 
-            transform: scale(1.08); 
-          } 
- 
-          100% { 
-            opacity: 1; 
-            transform: scale(1); 
-          } 
-        } 
- 
-        @keyframes anniversary-star-pop { 
-          0% { 
-            opacity: 0; 
-            transform: scale(0) rotate(-90deg); 
-          } 
- 
-          70% { 
-            opacity: 1; 
-            transform: scale(1.25) rotate(10deg); 
-          } 
- 
-          100% { 
-            opacity: 1; 
-            transform: scale(1) rotate(0deg); 
-          } 
-        } 
- 
-        @keyframes anniversary-star-float { 
-          0%, 
-          100% { 
-            opacity: 0.55; 
-            transform: translateY(0) scale(0.9); 
-          } 
- 
-          50% { 
-            opacity: 1; 
-            transform: translateY(-5px) scale(1.2); 
-          } 
-        } 
- 
-        @keyframes anniversary-particle-burst { 
-          0% { 
-            opacity: 0; 
-            transform: 
-              translate(-50%, -50%) 
-              scale(0); 
-          } 
- 
-          15% { 
-            opacity: 1; 
-          } 
- 
-          100% { 
-            opacity: 0; 
-            transform: 
-              translate( 
-                calc(-50% + var(--x)), 
-                calc(-50% + var(--y)) 
-              ) 
-              scale(1); 
-          } 
-        } 
- 
-        @media (max-width: 640px) { 
- 
-          .firework span { 
-            width: 2px; 
-            height: 48px; 
-          } 
- 
-          .firework-1 { 
-            left: 12%; 
-            top: 22%; 
-          } 
- 
-          .firework-2 { 
-            right: 12%; 
-            top: 32%; 
-          } 
- 
-          .firework-3 { 
-            left: 50%; 
-            top: 16%; 
-          } 
- 
-          .firework-4 { 
-            left: 7%; 
-            top: 50%; 
-          } 
- 
-          .firework-5 { 
-            right: 7%; 
-            top: 50%; 
-          } 
- 
-          .anniversary-card { 
-            padding-left: 1.25rem; 
-            padding-right: 1.25rem; 
-          } 
- 
-          .anniversary-particle { 
-            width: 3px; 
-            height: 3px; 
-          } 
-        } 
- 
-      `}</style> 
- 
-    </main> 
-  ); 
-} 
+        <footer className="mt-14 border-t border-white/10 py-8 text-center">
+
+          <p className="text-xs font-black tracking-[0.25em] text-slate-500">
+            FROM HELL TO THE STAGE
+          </p>
+
+          <p className="mt-2 text-[11px] leading-6 text-slate-600">
+  본 페이지는 HADES의 활동과 순간들을 보기 편리하게 정리하기 위해 제작된 비공식 팬페이지입니다.
+  <br />
+  어떠한 수익 창출이나 상업적 목적 없이, HADES를 응원하고 기록하기 위해 운영됩니다.
+</p>
+        </footer>
+
+      </div>
+
+      {/* =========================
+          TOP BUTTON
+          ========================= */}
+
+      {showTopButton && (
+        <button
+          type="button"
+          onClick={() =>
+            window.scrollTo({
+              top: 0,
+              behavior: "smooth",
+            })
+          }
+          className="fixed bottom-5 right-5 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-[#0b1020]/90 text-xl font-black shadow-2xl sm:bottom-7 sm:right-7 sm:h-14 sm:w-14"
+        >
+          ↑
+        </button>
+      )}
+
+      {/* =========================
+          FIREWORK CSS
+          ========================= */}
+
+      <style jsx>{`
+        .firework {
+          position: absolute;
+          width: 8px;
+          height: 8px;
+          border-radius: 9999px;
+          animation: firework-burst 2.4s ease-out infinite;
+        }
+
+        .firework span {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          width: 3px;
+          height: 75px;
+          border-radius: 9999px;
+          transform-origin: 50% 0;
+          background: linear-gradient(
+            to bottom,
+            rgba(255, 255, 255, 1),
+            rgba(168, 85, 247, 0)
+          );
+        }
+
+        .firework span:nth-child(1) {
+          transform: translate(-50%, 0)
+            rotate(0deg);
+        }
+
+        .firework span:nth-child(2) {
+          transform: translate(-50%, 0)
+            rotate(30deg);
+        }
+
+        .firework span:nth-child(3) {
+          transform: translate(-50%, 0)
+            rotate(60deg);
+        }
+
+        .firework span:nth-child(4) {
+          transform: translate(-50%, 0)
+            rotate(90deg);
+        }
+
+        .firework span:nth-child(5) {
+          transform: translate(-50%, 0)
+            rotate(120deg);
+        }
+
+        .firework span:nth-child(6) {
+          transform: translate(-50%, 0)
+            rotate(150deg);
+        }
+
+        .firework span:nth-child(7) {
+          transform: translate(-50%, 0)
+            rotate(180deg);
+        }
+
+        .firework span:nth-child(8) {
+          transform: translate(-50%, 0)
+            rotate(210deg);
+        }
+
+        .firework span:nth-child(9) {
+          transform: translate(-50%, 0)
+            rotate(240deg);
+        }
+
+        .firework span:nth-child(10) {
+          transform: translate(-50%, 0)
+            rotate(270deg);
+        }
+
+        .firework span:nth-child(11) {
+          transform: translate(-50%, 0)
+            rotate(300deg);
+        }
+
+        .firework span:nth-child(12) {
+          transform: translate(-50%, 0)
+            rotate(330deg);
+        }
+
+        .firework-1 {
+          left: 18%;
+          top: 25%;
+          animation-delay: 0s;
+        }
+
+        .firework-2 {
+          right: 18%;
+          top: 35%;
+          animation-delay: 0.8s;
+        }
+
+        .firework-3 {
+          left: 50%;
+          top: 18%;
+          animation-delay: 1.6s;
+        }
+
+        @keyframes firework-burst {
+          0% {
+            opacity: 0;
+            transform: scale(0.15);
+          }
+
+          12% {
+            opacity: 1;
+          }
+
+          55% {
+            opacity: 1;
+            transform: scale(1);
+          }
+
+          100% {
+            opacity: 0;
+            transform: scale(1.35);
+          }
+        }
+
+        @media (max-width: 640px) {
+          .firework span {
+            width: 2px;
+            height: 48px;
+          }
+
+          .firework-1 {
+            left: 12%;
+            top: 22%;
+          }
+
+          .firework-2 {
+            right: 12%;
+            top: 32%;
+          }
+
+          .firework-3 {
+            left: 50%;
+            top: 16%;
+          }
+        }
+      .hades-since-neon {
+        animation: hadesNeonGlow 1.4s ease-in-out infinite;
+        box-shadow:
+          0 0 10px rgba(236, 72, 153, 0.95),
+          0 0 24px rgba(236, 72, 153, 0.78),
+          0 0 48px rgba(236, 72, 153, 0.48);
+      }
+
+      .hades-neon-spark {
+        animation: hadesNeonSpark 0.85s steps(2, end) infinite;
+      }
+
+      @keyframes hadesNeonGlow {
+        0%, 100% {
+          box-shadow:
+            0 0 10px rgba(236, 72, 153, 0.85),
+            0 0 24px rgba(236, 72, 153, 0.65),
+            0 0 48px rgba(236, 72, 153, 0.35);
+        }
+        50% {
+          box-shadow:
+            0 0 16px rgba(236, 72, 153, 1),
+            0 0 34px rgba(236, 72, 153, 0.9),
+            0 0 65px rgba(236, 72, 153, 0.58);
+        }
+      }
+
+      @keyframes hadesNeonSpark {
+        0%, 100% {
+          opacity: 0.35;
+          filter: brightness(1);
+        }
+        45% {
+          opacity: 1;
+          filter: brightness(1.8);
+        }
+        55% {
+          opacity: 0.5;
+          filter: brightness(1.2);
+        }
+      }
+
+      `}</style>
+
+    </main>
+  );
+}
