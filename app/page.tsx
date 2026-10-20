@@ -36,6 +36,12 @@ type Filter =
   | "개인"
   | Category;
 
+function getKoreaDateString() {
+  return new Date()
+    .toLocaleString("sv-SE", { timeZone: "Asia/Seoul" })
+    .slice(0, 10);
+}
+
 const categories: Category[] = [
   "데뷔",
   "음원",
@@ -403,11 +409,7 @@ export default function Home() {
     useState<ActivityType>("단체");
 
   const [today, setToday] =
-    useState(
-      new Date()
-        .toISOString()
-        .slice(0, 10)
-    );
+    useState(getKoreaDateString);
 
   const [showTopButton, setShowTopButton] =
     useState(false);
@@ -418,8 +420,14 @@ export default function Home() {
   const [expandedMonths, setExpandedMonths] =
     useState<Set<string>>(new Set());
 
+  const [showYeonchorokAnniversary, setShowYeonchorokAnniversary] =
+    useState(true);
+
   const is365Days =
     today === "2026-09-05";
+
+  const isYeonchorokAnniversary =
+    today === "2026-10-21";
 
   /*
    * =========================
@@ -462,11 +470,7 @@ export default function Home() {
   useEffect(() => {
     const timer =
       setInterval(() => {
-        setToday(
-          new Date()
-            .toISOString()
-            .slice(0, 10)
-        );
+        setToday(getKoreaDateString());
       }, 60000);
 
     return () =>
@@ -1271,6 +1275,7 @@ export default function Home() {
 
   const isSpecialDay =
     is365Days ||
+    isYeonchorokAnniversary ||
     isBirthdayToday;
 
   const hadesDays =
@@ -1302,12 +1307,23 @@ export default function Home() {
           SPECIAL DAY FIREWORKS
           ========================= */}
 
-      {isSpecialDay && (
+      {isSpecialDay && (!isYeonchorokAnniversary || showYeonchorokAnniversary) && (
         <div className="pointer-events-none fixed inset-0 z-[100] overflow-hidden">
 
           <div className="absolute inset-0 bg-black/[0.08]" />
 
-          <div className="firework firework-1">
+          {isYeonchorokAnniversary && (
+            <button
+              type="button"
+              aria-label="연초록 2주년 기념 연출 닫기"
+              onClick={() => setShowYeonchorokAnniversary(false)}
+              className="pointer-events-auto absolute right-4 top-4 z-[110] flex h-11 w-11 items-center justify-center rounded-full border border-lime-300/80 bg-[#14210a]/95 text-2xl font-black leading-none text-lime-200 shadow-[0_0_22px_rgba(163,230,53,0.7)] transition hover:scale-110 hover:bg-lime-300 hover:text-[#14210a] focus:outline-none focus:ring-2 focus:ring-lime-200"
+            >
+              ×
+            </button>
+          )}
+
+          <div className={`firework firework-1 ${isYeonchorokAnniversary ? "firework-lime" : ""}`}>
             {Array.from({
               length: 12,
             }).map((_, index) => (
@@ -1317,7 +1333,7 @@ export default function Home() {
             ))}
           </div>
 
-          <div className="firework firework-2">
+          <div className={`firework firework-2 ${isYeonchorokAnniversary ? "firework-lime" : ""}`}>
             {Array.from({
               length: 12,
             }).map((_, index) => (
@@ -1327,7 +1343,7 @@ export default function Home() {
             ))}
           </div>
 
-          <div className="firework firework-3">
+          <div className={`firework firework-3 ${isYeonchorokAnniversary ? "firework-lime" : ""}`}>
             {Array.from({
               length: 12,
             }).map((_, index) => (
@@ -1355,6 +1371,24 @@ export default function Home() {
                     HADES와 함께한 1년
                   </p>
                 </>
+              ) : isYeonchorokAnniversary ? (
+                <>
+                  <p className="text-[10px] font-black tracking-[0.35em] text-lime-300">
+                    HAPPY 2ND ANNIVERSARY
+                  </p>
+
+                  <p className="mt-2 text-3xl font-black text-lime-200 sm:text-5xl">
+                    연초록
+                  </p>
+
+                  <p className="mt-2 text-xl font-black text-lime-300 sm:text-2xl">
+                    STREAMING 2ND ANNIVERSARY
+                  </p>
+
+                  <p className="mt-2 text-xs font-bold text-slate-300 sm:text-sm">
+                    2026.10.21 · 방송 2주년을 축하합니다
+                  </p>
+                </>
               ) : (
                 <>
                   <p className="text-[10px] font-black tracking-[0.35em] text-pink-300">
@@ -1377,6 +1411,18 @@ export default function Home() {
 
             </div>
           </div>
+
+          {isYeonchorokAnniversary && (
+            <div className="dino-anniversary-stage absolute bottom-[7%] left-1/2 flex flex-col items-center">
+              <div className="dino-speech-bubble mb-1 rounded-2xl border-2 border-lime-300/90 bg-[#14210a]/95 px-4 py-2 text-center font-black text-lime-200 shadow-[0_0_28px_rgba(163,230,53,0.65)]">
+                초록초록! 2주년 축하해!
+                <span className="dino-bubble-tail" />
+              </div>
+              <div className="dino-character select-none" aria-hidden="true">🦖</div>
+              <div className="dino-ground-glow" />
+              <div className="dino-footprints" aria-hidden="true">🐾　🐾　🐾</div>
+            </div>
+          )}
         </div>
       )}
 
@@ -2625,6 +2671,109 @@ export default function Home() {
         .firework span:nth-child(12) {
           transform: translate(-50%, 0)
             rotate(330deg);
+        }
+
+        .firework-lime span {
+          background: #a3e635;
+          box-shadow:
+            0 0 8px rgba(163, 230, 53, 1),
+            0 0 18px rgba(163, 230, 53, 0.85),
+            0 0 34px rgba(163, 230, 53, 0.55);
+        }
+
+        .dino-anniversary-stage {
+          z-index: 2;
+          width: min(90vw, 440px);
+          animation: dino-stage-rise 1.15s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+        }
+
+        .dino-speech-bubble {
+          position: relative;
+          font-size: clamp(13px, 2.5vw, 19px);
+          letter-spacing: 0.02em;
+          animation: dino-bubble-pop 0.55s 0.8s cubic-bezier(0.2, 1.5, 0.4, 1) both, dino-bubble-float 2.2s 1.4s ease-in-out infinite;
+        }
+
+        .dino-bubble-tail {
+          position: absolute;
+          left: calc(50% - 8px);
+          bottom: -9px;
+          width: 15px;
+          height: 15px;
+          background: #14210a;
+          border-right: 2px solid rgba(190, 242, 100, 0.95);
+          border-bottom: 2px solid rgba(190, 242, 100, 0.95);
+          transform: rotate(45deg);
+        }
+
+        .dino-character {
+          position: relative;
+          z-index: 1;
+          font-size: clamp(100px, 19vw, 170px);
+          line-height: 1;
+          filter: drop-shadow(0 0 10px rgba(163, 230, 53, 0.95)) drop-shadow(0 0 28px rgba(132, 204, 22, 0.8));
+          transform-origin: 50% 100%;
+          animation: dino-character-bounce 1.05s 0.45s ease-in-out both, dino-idle-bob 1.8s 1.55s ease-in-out infinite;
+        }
+
+        .dino-ground-glow {
+          width: 150px;
+          height: 18px;
+          margin-top: -5px;
+          border-radius: 50%;
+          background: rgba(163, 230, 53, 0.55);
+          filter: blur(12px);
+          animation: dino-ground-pulse 1.5s ease-in-out infinite;
+        }
+
+        .dino-footprints {
+          margin-top: 2px;
+          color: #bef264;
+          font-size: 18px;
+          letter-spacing: 0.2em;
+          opacity: 0.9;
+          text-shadow: 0 0 12px rgba(163, 230, 53, 0.9);
+          animation: dino-footsteps 1.4s ease-in-out infinite;
+        }
+
+        @keyframes dino-stage-rise {
+          0% { opacity: 0; transform: translate(-50%, 180px) scale(0.45); }
+          65% { opacity: 1; transform: translate(-50%, -16px) scale(1.08); }
+          82% { transform: translate(-50%, 7px) scale(0.97); }
+          100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+        }
+
+        @keyframes dino-bubble-pop {
+          0% { opacity: 0; transform: scale(0.2) rotate(-8deg); }
+          75% { opacity: 1; transform: scale(1.12) rotate(3deg); }
+          100% { opacity: 1; transform: scale(1) rotate(0); }
+        }
+
+        @keyframes dino-bubble-float {
+          0%, 100% { translate: 0 0; }
+          50% { translate: 0 -5px; }
+        }
+
+        @keyframes dino-character-bounce {
+          0% { transform: scale(0.2) rotate(-22deg); }
+          60% { transform: scale(1.18) rotate(8deg); }
+          78% { transform: scale(0.92) rotate(-4deg); }
+          100% { transform: scale(1) rotate(0); }
+        }
+
+        @keyframes dino-idle-bob {
+          0%, 100% { translate: 0 0; rotate: -2deg; }
+          50% { translate: 0 -10px; rotate: 2deg; }
+        }
+
+        @keyframes dino-ground-pulse {
+          0%, 100% { opacity: 0.45; transform: scaleX(0.8); }
+          50% { opacity: 0.95; transform: scaleX(1.15); }
+        }
+
+        @keyframes dino-footsteps {
+          0%, 100% { opacity: 0.45; transform: translateY(0); }
+          50% { opacity: 1; transform: translateY(-3px); }
         }
 
         .firework-1 {
