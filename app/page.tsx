@@ -1,2885 +1,507 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-type Category =
-  | "데뷔"
-  | "음원"
-  | "콘텐츠"
-  | "방송"
-  | "공연"
-  | "기타";
-
-type ActivityType = "단체" | "개인";
-
-type Event = {
+type TimelineEvent = {
   id: number;
+  creator?: string | null;
   date: string;
-  time: string;
+  time?: string | null;
   title: string;
-  description: string;
-  imageUrl: string;
-  imageKey?: string;
-  youtubeUrl: string;
+  description?: string | null;
+  imageUrl?: string | null;
+  imageKey?: string | null;
+  youtubeUrl?: string | null;
   important: boolean;
   pinned: boolean;
-  category: Category;
-  activityType: ActivityType;
+  category: string;
+  activityType?: string | null;
 };
 
-type Filter =
-  | "all"
-  | "pinned"
-  | "important"
-  | "단체"
-  | "개인"
-  | Category;
-
-function getKoreaDateString() {
-  return new Date()
-    .toLocaleString("sv-SE", { timeZone: "Asia/Seoul" })
-    .slice(0, 10);
-}
-
-const categories: Category[] = [
-  "데뷔",
-  "음원",
-  "콘텐츠",
-  "방송",
-  "공연",
-  "기타",
-];
-
-const categoryStyle: Record<Category, string> = {
-  데뷔: "bg-pink-500/15 text-pink-300 border-pink-400/20",
-  음원: "bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-400/20",
-  콘텐츠: "bg-cyan-500/15 text-cyan-300 border-cyan-400/20",
-  방송: "bg-yellow-500/15 text-yellow-300 border-yellow-400/20",
-  공연: "bg-lime-500/15 text-lime-300 border-lime-400/20",
-  기타: "bg-slate-500/15 text-slate-300 border-slate-400/20",
+type EventRow = {
+  id: number;
+  creator?: string | null;
+  date: string;
+  time?: string | null;
+  title: string;
+  description?: string | null;
+  image_url?: string | null;
+  image_key?: string | null;
+  youtube_url?: string | null;
+  important?: boolean | null;
+  pinned?: boolean | null;
+  category?: string | null;
+  activity_type?: string | null;
 };
 
-const members = [
-  {
-    name: "솜주먹",
-    month: 11,
-    day: 11,
-    color: "border-pink-400/20 bg-pink-400/[0.07] text-pink-300",
-    dot: "bg-pink-400",
-  },
-  {
-    name: "연초록",
-    month: 8,
-    day: 1,
-    color: "border-lime-400/20 bg-lime-400/[0.07] text-lime-300",
-    dot: "bg-lime-400",
-  },
-  {
-    name: "챈나",
-    month: 2,
-    day: 26,
-    color: "border-indigo-400/30 bg-indigo-400/[0.09] text-indigo-300",
-    dot: "bg-indigo-400",
-  },
-  {
-    name: "띵귤",
-    month: 12,
-    day: 24,
-    color: "border-yellow-400/20 bg-yellow-400/[0.07] text-yellow-300",
-    dot: "bg-yellow-400",
-  },
-  {
-    name: "키마",
-    month: 4,
-    day: 22,
-    color: "border-purple-400/20 bg-purple-400/[0.07] text-purple-300",
-    dot: "bg-purple-400",
-  },
-];
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+const supabase: SupabaseClient | null =
+  supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
-function getDaysBetween(start: Date, end: Date) {
-  const a = new Date(
-    start.getFullYear(),
-    start.getMonth(),
-    start.getDate()
-  ).getTime();
+const MEMBER_COLORS: Record<string, string> = {
+  솜주먹: "#ff77bd",
+  띵귤: "#ffd85a",
+  연초록: "#a8ff9b",
+  챈나: "#7979ff",
+  키마: "#c18bff",
+};
 
-  const b = new Date(
-    end.getFullYear(),
-    end.getMonth(),
-    end.getDate()
-  ).getTime();
+const SOOP_MEMBERS = [
+  { name: "솜주먹", id: "ldrboo", url: "https://www.sooplive.com/station/ldrboo" },
+  { name: "띵귤", id: "singgyul", url: "https://www.sooplive.com/station/singgyul" },
+  { name: "연초록", id: "whatcherry4", url: "https://www.sooplive.com/station/whatcherry4" },
+  { name: "챈나", id: "chaenna02", url: "https://www.sooplive.com/station/chaenna02" },
+  { name: "키마", id: "kymakyma", url: "https://www.sooplive.com/station/kymakyma" },
+] as const;
 
-  return Math.floor((b - a) / 86400000);
-}
+type SoopStatus = { id: string; live: boolean | null; title?: string; checkedAt?: string };
 
-function getHadesDays() {
-  return getDaysBetween(
-    new Date(2025, 8, 5),
-    new Date()
-  );
-}
+const DEFAULT_CATEGORIES = ["개인", "단체", "수상", "데뷔", "콘텐츠", "방송", "기타"];
+const MONTH_NAMES = ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"];
+const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
-function getBirthdayInfo(month: number, day: number) {
-  const today = new Date();
-
-  const todayDate = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate()
-  );
-
-  let birthday = new Date(
-    today.getFullYear(),
-    month - 1,
-    day
-  );
-
-  if (birthday < todayDate) {
-    birthday = new Date(
-      today.getFullYear() + 1,
-      month - 1,
-      day
-    );
-  }
-
-  const days = getDaysBetween(todayDate, birthday);
-
+function toEvent(row: EventRow): TimelineEvent {
   return {
-    days,
-    isToday: days === 0,
+    id: Number(row.id),
+    creator: row.creator ?? null,
+    date: row.date,
+    time: row.time ?? "",
+    title: row.title ?? "제목 없는 기록",
+    description: row.description ?? "",
+    imageUrl: row.image_url ?? null,
+    imageKey: row.image_key ?? null,
+    youtubeUrl: row.youtube_url ?? null,
+    important: Boolean(row.important),
+    pinned: Boolean(row.pinned),
+    category: row.category ?? "기타",
+    activityType: row.activity_type ?? "",
   };
 }
 
-function getYoutubeId(url: string) {
+function toRow(event: Partial<TimelineEvent>) {
+  return {
+    date: event.date,
+    time: event.time || null,
+    title: event.title,
+    description: event.description || null,
+    image_url: event.imageUrl || null,
+    image_key: event.imageKey || null,
+    youtube_url: event.youtubeUrl || null,
+    important: Boolean(event.important),
+    pinned: Boolean(event.pinned),
+    category: event.category || "기타",
+    activity_type: event.activityType || null,
+  };
+}
+
+function youtubeId(url?: string | null) {
+  if (!url) return null;
   try {
     const parsed = new URL(url);
-    const host = parsed.hostname.replace("www.", "");
-
-    if (
-      host === "youtube.com" ||
-      host === "m.youtube.com"
-    ) {
-      const v = parsed.searchParams.get("v");
-
-      if (v) return v;
-
-      if (parsed.pathname.startsWith("/shorts/")) {
-        return (
-          parsed.pathname
-            .split("/shorts/")[1]
-            ?.split("/")[0] || null
-        );
-      }
-
-      if (parsed.pathname.startsWith("/embed/")) {
-        return (
-          parsed.pathname
-            .split("/embed/")[1]
-            ?.split("/")[0] || null
-        );
-      }
+    if (parsed.hostname.includes("youtu.be")) return parsed.pathname.slice(1).split("/")[0];
+    if (parsed.hostname.includes("youtube.com")) {
+      if (parsed.pathname === "/watch") return parsed.searchParams.get("v");
+      const parts = parsed.pathname.split("/").filter(Boolean);
+      const index = parts.findIndex((part) => ["embed", "shorts", "live"].includes(part));
+      return index >= 0 ? parts[index + 1] : null;
     }
-
-    if (host === "youtu.be") {
-      return (
-        parsed.pathname.slice(1).split("/")[0] || null
-      );
-    }
-
-    return null;
   } catch {
     return null;
   }
+  return null;
 }
 
-function getYoutubeThumbnail(url: string) {
-  const id = getYoutubeId(url);
-
-  return id
-    ? `https://img.youtube.com/vi/${id}/hqdefault.jpg`
-    : null;
+function formatDate(date: string) {
+  if (!date) return "날짜 미정";
+  const [year, month, day] = date.split("-").map(Number);
+  return `${year}.${String(month).padStart(2, "0")}.${String(day).padStart(2, "0")}`;
 }
 
-function sortEvents(
-  events: Event[],
-  order: "newest" | "oldest"
-) {
-  return [...events].sort((a, b) => {
-    if (Boolean(a.pinned) !== Boolean(b.pinned)) {
-      return a.pinned ? -1 : 1;
-    }
-
-    const aValue = `${a.date} ${a.time}`;
-    const bValue = `${b.date} ${b.time}`;
-
-    return order === "newest"
-      ? bValue.localeCompare(aValue)
-      : aValue.localeCompare(bValue);
-  });
+function getMember(event: TimelineEvent) {
+  const text = `${event.title} ${event.description ?? ""} ${event.activityType ?? ""}`;
+  return Object.keys(MEMBER_COLORS).find((name) => text.includes(name)) ?? "HADES";
 }
 
-function getMonthLabel(date: string) {
-  const parts = date.split("-");
-
-  if (parts.length >= 2) {
-    return `${parts[0]}년 ${Number(parts[1])}월`;
-  }
-
-  const dotParts = date.split(".");
-
-  if (dotParts.length >= 2) {
-    return `${dotParts[0]}년 ${Number(dotParts[1])}월`;
-  }
-
-  return date;
+function getMonthKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function compressImage(file: File): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      const img = new Image();
-
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-
-        let width = img.width;
-        let height = img.height;
-
-        const max = 1600;
-
-        if (width > max || height > max) {
-          const ratio = Math.min(
-            max / width,
-            max / height
-          );
-
-          width = Math.round(width * ratio);
-          height = Math.round(height * ratio);
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext("2d");
-
-        if (!ctx) {
-          reject(new Error("Canvas 오류"));
-          return;
-        }
-
-        ctx.drawImage(
-          img,
-          0,
-          0,
-          width,
-          height
-        );
-
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) {
-              reject(
-                new Error("이미지 압축 실패")
-              );
-              return;
-            }
-
-            resolve(blob);
-          },
-          "image/jpeg",
-          0.8
-        );
-      };
-
-      img.onerror = () =>
-        reject(
-          new Error("이미지 로드 실패")
-        );
-
-      img.src = reader.result as string;
-    };
-
-    reader.onerror = () =>
-      reject(
-        new Error("파일 읽기 실패")
-      );
-
-    reader.readAsDataURL(file);
-  });
+function Stat({ label, value, accent }: { label: string; value: string | number; accent?: string }) {
+  return (
+    <div className="stat-box">
+      <span className="stat-label">{label}</span>
+      <strong style={accent ? { color: accent } : undefined}>{value}</strong>
+    </div>
+  );
 }
 
-async function uploadImage(
-  key: string,
-  blob: Blob
-) {
-  const { error } = await supabase.storage
-    .from("timeline-images")
-    .upload(key, blob, {
-      contentType: "image/jpeg",
-      upsert: true,
-    });
-
-  if (error) throw error;
-
-  const { data } = supabase.storage
-    .from("timeline-images")
-    .getPublicUrl(key);
-
-  return data.publicUrl;
-}
-
-async function deleteImage(key?: string) {
-  if (!key) return;
-
-  const { error } = await supabase.storage
-    .from("timeline-images")
-    .remove([key]);
-
-  if (error) {
-    console.error(
-      "사진 삭제 오류:",
-      error
-    );
-  }
-}
-
-export default function Home() {
-  const [events, setEvents] = useState<Event[]>([]);
-  const [user, setUser] = useState<any>(null);
+export default function Page() {
+  const [events, setEvents] = useState<TimelineEvent[]>([]);
+  const [soopStatuses, setSoopStatuses] = useState<Record<string, SoopStatus>>({});
+  const [soopCheckedAt, setSoopCheckedAt] = useState<string | null>(null);
+  const [soopLoading, setSoopLoading] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [dbError, setDbError] = useState("");
+  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+  const [adminMode, setAdminMode] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [query, setQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("전체");
+  const [memberFilter, setMemberFilter] = useState("전체");
+  const [sortOrder, setSortOrder] = useState("latest");
+  const [selectedDate, setSelectedDate] = useState("");
+  const [calendarDate, setCalendarDate] = useState(() => new Date(2025, 8, 1));
+  const [showPinnedOnly, setShowPinnedOnly] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [form, setForm] = useState({
+    date: new Date().toISOString().slice(0, 10),
+    time: "",
+    title: "",
+    description: "",
+    imageUrl: "",
+    youtubeUrl: "",
+    category: "개인",
+    activityType: "",
+    important: false,
+    pinned: false,
+  });
 
-  const [editingId, setEditingId] =
-    useState<number | null>(null);
-
-  const [showForm, setShowForm] =
-    useState(false);
-
-  const [playingVideoId, setPlayingVideoId] =
-    useState<string | null>(null);
-
-  const [search, setSearch] =
-    useState("");
-
-  const [filter, setFilter] =
-    useState<Filter>("all");
-
-  const [sortOrder, setSortOrder] =
-    useState<"newest" | "oldest">(
-      "newest"
-    );
-
-  const [date, setDate] =
-    useState("");
-
-  const [time, setTime] =
-    useState("");
-
-  const [title, setTitle] =
-    useState("");
-
-  const [description, setDescription] =
-    useState("");
-
-  const [youtubeUrl, setYoutubeUrl] =
-    useState("");
-
-  const [imagePreview, setImagePreview] =
-    useState("");
-
-  const [pendingImageBlob, setPendingImageBlob] =
-    useState<Blob | null>(null);
-
-  const [oldImageKey, setOldImageKey] =
-    useState<string | undefined>();
-
-  const [important, setImportant] =
-    useState(false);
-
-  const [pinned, setPinned] =
-    useState(false);
-
-  const [category, setCategory] =
-    useState<Category>("기타");
-
-  const [activityType, setActivityType] =
-    useState<ActivityType>("단체");
-
-  const [today, setToday] =
-    useState(getKoreaDateString);
-
-  const [showTopButton, setShowTopButton] =
-    useState(false);
-
-  const [highlightedEventId, setHighlightedEventId] =
-    useState<number | null>(null);
-
-  const [expandedMonths, setExpandedMonths] =
-    useState<Set<string>>(new Set());
-
-  const [showYeonchorokAnniversary, setShowYeonchorokAnniversary] =
-    useState(true);
-
-  const is365Days =
-    today === "2026-09-05";
-
-  const isYeonchorokAnniversary =
-    today === "2026-10-21";
-
-  /*
-   * =========================
-   * 로그인
-   * =========================
-   */
-
-  useEffect(() => {
-    document.title =
-      "HADES TIMELINE";
-
-    supabase.auth
-      .getUser()
-      .then(({ data }) => {
-        setUser(data.user);
-      });
-
-    const {
-      data: authListener,
-    } =
-      supabase.auth.onAuthStateChange(
-        (_event, session) => {
-          setUser(
-            session?.user ?? null
-          );
-        }
-      );
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, []);
-
-  /*
-   * =========================
-   * 날짜
-   * =========================
-   */
-
-  useEffect(() => {
-    const timer =
-      setInterval(() => {
-        setToday(getKoreaDateString());
-      }, 60000);
-
-    return () =>
-      clearInterval(timer);
-  }, []);
-
-  /*
-   * =========================
-   * 스크롤
-   * =========================
-   */
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setShowTopButton(
-        window.scrollY > 500
-      );
-    };
-
-    window.addEventListener(
-      "scroll",
-      handleScroll,
-      { passive: true }
-    );
-
-    handleScroll();
-
-    return () =>
-      window.removeEventListener(
-        "scroll",
-        handleScroll
-      );
-  }, []);
-
-  /*
-   * =========================
-   * Supabase 기록 불러오기
-   * =========================
-   */
-
-  const loadEvents = async () => {
-    setLoading(true);
-
-    const { data, error } =
-      await supabase
-        .from("timeline")
-        .select("*")
-        .order("date", {
-          ascending: false,
-        })
-        .order("time", {
-          ascending: false,
-        });
-
-    if (error) {
-      console.error(
-        "Supabase 기록 불러오기 오류:",
-        error
-      );
-
-      alert(
-        "기록을 불러오지 못했습니다."
-      );
-
-      setEvents([]);
+  const loadEvents = useCallback(async () => {
+    if (!supabase) {
+      setDbError("Supabase 환경변수가 설정되지 않았어요. .env.local의 NEXT_PUBLIC_SUPABASE_URL과 NEXT_PUBLIC_SUPABASE_ANON_KEY를 확인해 주세요.");
       setLoading(false);
       return;
     }
-
-    const converted: Event[] =
-      (data || []).map((item) => ({
-        id: Number(item.id),
-        date: item.date || "",
-        time: item.time || "",
-        title: item.title || "",
-        description:
-          item.description || "",
-        imageUrl:
-          item.image_url || "",
-        imageKey:
-          item.image_key ||
-          undefined,
-        youtubeUrl:
-          item.youtube_url || "",
-        important:
-          Boolean(item.important),
-        pinned:
-          Boolean(item.pinned),
-        category:
-          (item.category ||
-            "기타") as Category,
-        activityType:
-          (item.activity_type ||
-            "단체") as ActivityType,
-      }));
-
-    setEvents(converted);
+    setLoading(true);
+    setDbError("");
+    const { data, error } = await supabase.from("timeline").select("*").order("date", { ascending: false }).order("time", { ascending: false });
+    if (error) {
+      setDbError(`기록을 불러오지 못했어요: ${error.message}`);
+      setEvents([]);
+    } else {
+      setEvents(((data ?? []) as EventRow[]).map(toEvent));
+    }
     setLoading(false);
-  };
-
-  useEffect(() => {
-    loadEvents();
   }, []);
 
-  /*
-   * =========================
-   * 폼 초기화
-   * =========================
-   */
-
-  const resetForm = () => {
-    setEditingId(null);
-    setDate("");
-    setTime("");
-    setTitle("");
-    setDescription("");
-    setYoutubeUrl("");
-    setImagePreview("");
-    setPendingImageBlob(null);
-    setOldImageKey(undefined);
-    setImportant(false);
-    setPinned(false);
-    setCategory("기타");
-    setActivityType("단체");
-    setShowForm(false);
-  };
-
-  /*
-   * =========================
-   * 수정
-   * =========================
-   */
-
-  const startEdit = (
-    event: Event
-  ) => {
-    setEditingId(event.id);
-    setDate(event.date);
-    setTime(event.time);
-    setTitle(event.title);
-    setDescription(
-      event.description
-    );
-    setYoutubeUrl(
-      event.youtubeUrl
-    );
-    setImagePreview(
-      event.imageUrl
-    );
-    setPendingImageBlob(null);
-    setOldImageKey(
-      event.imageKey
-    );
-    setImportant(
-      event.important
-    );
-    setPinned(event.pinned);
-    setCategory(
-      event.category
-    );
-    setActivityType(
-      event.activityType
-    );
-    setShowForm(true);
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
+  useEffect(() => {
+    void loadEvents();
+    if (!supabase) return;
+    supabase.auth.getSession().then(({ data }) => {
+      setSessionEmail(data.session?.user.email ?? null);
+      setAdminMode(Boolean(data.session));
     });
-  };
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSessionEmail(session?.user.email ?? null);
+      setAdminMode(Boolean(session));
+    });
+    return () => listener.subscription.unsubscribe();
+  }, [loadEvents]);
 
-  /*
-   * =========================
-   * 기록 저장
-   * =========================
-   */
-
-  const addEvent = async () => {
-    console.log(
-      "현재 로그인 사용자:",
-      user?.id
-    );
-
-    if (!user) {
-      alert(
-        "관리자 로그인 후 이용해주세요."
-      );
-      return;
-    }
-
-    if (
-      !date ||
-      !time ||
-      !title.trim()
-    ) {
-      alert(
-        "날짜, 시간, 제목을 입력해주세요."
-      );
-      return;
-    }
-
-    try {
-      /*
-       * 수정
-       */
-
-      if (editingId !== null) {
-        const current =
-          events.find(
-            (event) =>
-              event.id ===
-              editingId
-          );
-
-        let imageUrl =
-          current?.imageUrl || "";
-
-        let imageKey =
-          current?.imageKey;
-
-        if (pendingImageBlob) {
-          imageKey =
-            `image-${editingId}.jpg`;
-
-          imageUrl =
-            await uploadImage(
-              imageKey,
-              pendingImageBlob
-            );
-
-          if (
-            oldImageKey &&
-            oldImageKey !== imageKey
-          ) {
-            await deleteImage(
-              oldImageKey
-            );
-          }
-        }
-
-        const { data, error } =
-          await supabase
-            .from("timeline")
-            .update({
-              date,
-              time,
-              title: title.trim(),
-              description,
-              image_url: imageUrl,
-              image_key:
-                imageKey || null,
-              youtube_url:
-                youtubeUrl,
-              important,
-              pinned,
-              category,
-              activity_type:
-                activityType,
-            })
-            .eq("id", editingId)
-            .select("*")
-            .single();
-
-        if (error) throw error;
-
-        const updated: Event = {
-          id: Number(data.id),
-          date: data.date || "",
-          time: data.time || "",
-          title: data.title || "",
-          description:
-            data.description || "",
-          imageUrl:
-            data.image_url || "",
-          imageKey:
-            data.image_key ||
-            undefined,
-          youtubeUrl:
-            data.youtube_url || "",
-          important:
-            Boolean(
-              data.important
-            ),
-          pinned:
-            Boolean(data.pinned),
-          category:
-            (data.category ||
-              "기타") as Category,
-          activityType:
-            (data.activity_type ||
-              "단체") as ActivityType,
-        };
-
-        setEvents(
-          (currentEvents) =>
-            currentEvents.map(
-              (event) =>
-                event.id ===
-                editingId
-                  ? updated
-                  : event
-            )
-        );
-
-        resetForm();
-        return;
-      }
-
-      /*
-       * 새 기록
-       */
-
-      const { data, error } =
-        await supabase
-          .from("timeline")
-          .insert({
-            date,
-            time,
-            title: title.trim(),
-            description,
-            image_url: "",
-            image_key: null,
-            youtube_url:
-              youtubeUrl,
-            important,
-            pinned,
-            category,
-            activity_type:
-              activityType,
-          })
-          .select("*")
-          .single();
-
-      if (error) throw error;
-
-      let imageUrl = "";
-      let imageKey:
-        | string
-        | undefined;
-
-      if (pendingImageBlob) {
-        imageKey =
-          `image-${data.id}.jpg`;
-
-        imageUrl =
-          await uploadImage(
-            imageKey,
-            pendingImageBlob
-          );
-
-        const {
-          error: imageError,
-        } = await supabase
-          .from("timeline")
-          .update({
-            image_url: imageUrl,
-            image_key: imageKey,
-          })
-          .eq("id", data.id);
-
-        if (imageError) {
-          throw imageError;
-        }
-      }
-
-      const newEvent: Event = {
-        id: Number(data.id),
-        date: data.date || "",
-        time: data.time || "",
-        title: data.title || "",
-        description:
-          data.description || "",
-        imageUrl:
-          imageUrl ||
-          data.image_url ||
-          "",
-        imageKey:
-          imageKey ||
-          data.image_key ||
-          undefined,
-        youtubeUrl:
-          data.youtube_url || "",
-        important:
-          Boolean(data.important),
-        pinned:
-          Boolean(data.pinned),
-        category:
-          (data.category ||
-            "기타") as Category,
-        activityType:
-          (data.activity_type ||
-            "단체") as ActivityType,
-      };
-
-      setEvents((current) => [
-        newEvent,
-        ...current,
-      ]);
-
-      resetForm();
-    } catch (error) {
-      console.error(
-        "기록 저장 오류:",
-        error
-      );
-
-      alert(
-        "기록 저장 중 문제가 발생했습니다."
-      );
-    }
-  };
-
-  /*
-   * =========================
-   * 기록 삭제
-   * =========================
-   */
-
-  const deleteEvent = async (
-    event: Event
-  ) => {
-    if (!user) {
-      alert(
-        "관리자 로그인 후 이용해주세요."
-      );
-      return;
-    }
-
-    const confirmed =
-      window.confirm(
-        `"${event.title}" 기록을 삭제할까요?\n\n삭제하면 복구할 수 없습니다.`
-      );
-
-    if (!confirmed) return;
-
-    try {
-      const { error } =
-        await supabase
-          .from("timeline")
-          .delete()
-          .eq("id", event.id);
-
-      if (error) throw error;
-
-      if (event.imageKey) {
-        await deleteImage(
-          event.imageKey
-        );
-      }
-
-      setEvents((current) =>
-        current.filter(
-          (item) =>
-            item.id !== event.id
-        )
-      );
-
-      if (
-        playingVideoId ===
-        getYoutubeId(
-          event.youtubeUrl
-        )
-      ) {
-        setPlayingVideoId(null);
-      }
-    } catch (error) {
-      console.error(error);
-
-      alert(
-        "기록 삭제 중 문제가 발생했습니다."
-      );
-    }
-  };
-
-  /*
-   * =========================
-   * 사진 삭제
-   * =========================
-   */
-
-  const deleteEventImage =
-    async (event: Event) => {
-      if (!user) {
-        alert(
-          "관리자 로그인 후 이용해주세요."
-        );
-        return;
-      }
-
+  // 서버 API를 통해 SOOP 방송 상태를 확인하고 60초마다 자동 갱신합니다.
+  useEffect(() => {
+    let cancelled = false;
+    let inFlight = false;
+    const refresh = async () => {
+      if (inFlight) return;
+      inFlight = true;
       try {
-        if (event.imageKey) {
-          await deleteImage(
-            event.imageKey
-          );
+        const response = await fetch("/api/soop-status", { cache: "no-store" });
+        if (!response.ok) throw new Error(`SOOP 상태 조회 실패 (${response.status})`);
+        const result = await response.json() as { statuses?: SoopStatus[]; checkedAt?: string };
+        if (!cancelled && Array.isArray(result.statuses)) {
+          const next: Record<string, SoopStatus> = {};
+          result.statuses.forEach((status) => { next[status.id] = status; });
+          setSoopStatuses(next);
+          setSoopCheckedAt(result.checkedAt ?? new Date().toISOString());
         }
-
-        const { error } =
-          await supabase
-            .from("timeline")
-            .update({
-              image_url: "",
-              image_key: null,
-            })
-            .eq("id", event.id);
-
-        if (error) throw error;
-
-        setEvents((current) =>
-          current.map((item) =>
-            item.id === event.id
-              ? {
-                  ...item,
-                  imageUrl: "",
-                  imageKey:
-                    undefined,
-                }
-              : item
-          )
-        );
       } catch (error) {
-        console.error(error);
-
-        alert(
-          "사진 삭제 중 문제가 발생했습니다."
-        );
+        console.error("SOOP 방송 상태 조회 오류:", error);
+      } finally {
+        if (!cancelled) setSoopLoading(false);
+        inFlight = false;
       }
     };
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), 60_000);
+    return () => { cancelled = true; window.clearInterval(timer); };
+  }, []);
 
-  /*
-   * =========================
-   * 중요
-   * =========================
-   */
-
-  const toggleImportant =
-    async (event: Event) => {
-      if (!user) {
-        alert(
-          "관리자 로그인 후 이용해주세요."
-        );
-        return;
-      }
-
-      const value =
-        !event.important;
-
-      const { error } =
-        await supabase
-          .from("timeline")
-          .update({
-            important: value,
-          })
-          .eq("id", event.id);
-
-      if (error) {
-        alert(
-          "중요 설정 변경에 실패했습니다."
-        );
-        return;
-      }
-
-      setEvents((current) =>
-        current.map((item) =>
-          item.id === event.id
-            ? {
-                ...item,
-                important: value,
-              }
-            : item
-        )
-      );
-    };
-
-  /*
-   * =========================
-   * 고정
-   * =========================
-   */
-
-  const togglePinned =
-    async (event: Event) => {
-      if (!user) {
-        alert(
-          "관리자 로그인 후 이용해주세요."
-        );
-        return;
-      }
-
-      const value =
-        !event.pinned;
-
-      const { error } =
-        await supabase
-          .from("timeline")
-          .update({
-            pinned: value,
-          })
-          .eq("id", event.id);
-
-      if (error) {
-        alert(
-          "고정 설정 변경에 실패했습니다."
-        );
-        return;
-      }
-
-      setEvents((current) =>
-        current.map((item) =>
-          item.id === event.id
-            ? {
-                ...item,
-                pinned: value,
-              }
-            : item
-        )
-      );
-    };
-
-  /*
-   * =========================
-   * 필터
-   * =========================
-   */
-
-  const filteredEvents =
-    useMemo(() => {
-      const keyword =
-        search
-          .toLowerCase()
-          .trim();
-
-      const result =
-        events.filter((event) => {
-          const matchesSearch =
-            !keyword ||
-            event.title
-              .toLowerCase()
-              .includes(keyword) ||
-            event.description
-              .toLowerCase()
-              .includes(keyword);
-
-          const matchesFilter =
-            filter === "all" ||
-            (filter === "pinned" &&
-              event.pinned) ||
-            (filter === "important" &&
-              event.important) ||
-            event.category ===
-              filter ||
-            event.activityType ===
-              filter;
-
-          return (
-            matchesSearch &&
-            matchesFilter
-          );
-        });
-
-      return sortEvents(
-        result,
-        sortOrder
-      );
-    }, [
-      events,
-      search,
-      filter,
-      sortOrder,
-    ]);
-
-  const pinnedCount =
-    events.filter(
-      (event) => event.pinned
-    ).length;
-
-  const importantCount =
-    events.filter(
-      (event) => event.important
-    ).length;
-
-  const pinnedEvents = useMemo(() => {
-    return sortEvents(
-      events.filter((event) => event.pinned),
-      "newest"
-    ).slice(0, 3);
+  const categories = useMemo(() => {
+    const existing = events.map((event) => event.category).filter(Boolean);
+    return ["전체", ...Array.from(new Set([...DEFAULT_CATEGORIES, ...existing]))];
   }, [events]);
 
-  const timelineGroups = useMemo(() => {
-    const groups = new Map<string, Event[]>();
-
-    filteredEvents.forEach((event) => {
-      const key = event.date.slice(0, 7);
-      const existing = groups.get(key) || [];
-      existing.push(event);
-      groups.set(key, existing);
+  const filteredEvents = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    const list = events.filter((event) => {
+      const matchesQuery = !normalized || `${event.title} ${event.description ?? ""} ${event.category} ${event.activityType ?? ""}`.toLowerCase().includes(normalized);
+      const matchesCategory = categoryFilter === "전체" || event.category === categoryFilter;
+      const matchesMember = memberFilter === "전체" || getMember(event) === memberFilter;
+      const matchesDate = !selectedDate || event.date === selectedDate;
+      const matchesPinned = !showPinnedOnly || event.pinned;
+      return matchesQuery && matchesCategory && matchesMember && matchesDate && matchesPinned;
     });
-
-    return Array.from(groups.entries()).map(([key, groupEvents]) => ({
-      key,
-      label: getMonthLabel(groupEvents[0]?.date || key),
-      events: groupEvents,
-    }));
-  }, [filteredEvents]);
-
-  useEffect(() => {
-    if (timelineGroups.length === 0) return;
-    setExpandedMonths((current) => {
-      if (current.size > 0) return current;
-      return new Set([timelineGroups[0].key]);
+    return list.sort((a, b) => {
+      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+      if (sortOrder === "oldest") return a.date.localeCompare(b.date) || (a.time ?? "").localeCompare(b.time ?? "");
+      if (sortOrder === "title") return a.title.localeCompare(b.title, "ko");
+      return b.date.localeCompare(a.date) || (b.time ?? "").localeCompare(a.time ?? "");
     });
-  }, [timelineGroups]);
+  }, [events, query, categoryFilter, memberFilter, selectedDate, showPinnedOnly, sortOrder]);
 
-  const timelineYears = useMemo(() => {
-    return Array.from(
-      new Set(timelineGroups.map((group) => group.key.slice(0, 4)))
-    );
-  }, [timelineGroups]);
-
-  const toggleMonth = (monthKey: string) => {
-    setExpandedMonths((current) => {
-      const next = new Set(current);
-      if (next.has(monthKey)) next.delete(monthKey);
-      else next.add(monthKey);
-      return next;
+  const currentMonthKey = getMonthKey(calendarDate);
+  const monthEvents = useMemo(() => events.filter((event) => event.date.startsWith(currentMonthKey)), [events, currentMonthKey]);
+  const calendarCells = useMemo(() => {
+    const first = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), 1);
+    const offset = first.getDay();
+    const days = new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 0).getDate();
+    return Array.from({ length: Math.ceil((offset + days) / 7) * 7 }, (_, index) => {
+      const day = index - offset + 1;
+      if (day < 1 || day > days) return null;
+      return `${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     });
+  }, [calendarDate]);
+
+  const totalMembers = Object.keys(MEMBER_COLORS).map((name) => ({
+    name,
+    count: events.filter((event) => getMember(event) === name).length,
+    color: MEMBER_COLORS[name],
+  }));
+  const yearStart = new Date("2025-09-05T00:00:00");
+  const daysActive = Math.max(0, Math.floor((Date.now() - yearStart.getTime()) / 86400000));
+  const birthdayDate = new Date(2026, 10, 11);
+  const todayLocal = new Date();
+  todayLocal.setHours(0, 0, 0, 0);
+  const birthdayDaysLeft = Math.ceil((birthdayDate.getTime() - todayLocal.getTime()) / 86400000);
+  const resetFilters = () => {
+    setQuery(""); setCategoryFilter("전체"); setMemberFilter("전체"); setSelectedDate(""); setShowPinnedOnly(false);
+  };
+  const openNew = () => {
+    setEditingId(null); setPhotoFile(null);
+    setForm({ date: selectedDate || new Date().toISOString().slice(0, 10), time: "", title: "", description: "", imageUrl: "", youtubeUrl: "", category: "개인", activityType: "", important: false, pinned: false });
+    setEditorOpen(true);
+  };
+  const openEdit = (event: TimelineEvent) => {
+    setEditingId(event.id); setPhotoFile(null);
+    setForm({ date: event.date, time: event.time ?? "", title: event.title, description: event.description ?? "", imageUrl: event.imageUrl ?? "", youtubeUrl: event.youtubeUrl ?? "", category: event.category || "기타", activityType: event.activityType ?? "", important: event.important, pinned: event.pinned });
+    setEditorOpen(true);
   };
 
-  const toggleYear = (year: string) => {
-    setExpandedMonths((current) => {
-      const next = new Set(current);
-      const yearGroups = timelineGroups.filter((group) =>
-        group.key.startsWith(year)
-      );
-      const allExpanded = yearGroups.every((group) => next.has(group.key));
-      yearGroups.forEach((group) => {
-        if (allExpanded) next.delete(group.key);
-        else next.add(group.key);
-      });
-      return next;
-    });
-  };
+  async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault(); setLoginError("");
+    if (!supabase) { setLoginError("Supabase 설정을 먼저 확인해 주세요."); return; }
+    const { error } = await supabase.auth.signInWithPassword({ email: loginEmail, password: loginPassword });
+    if (error) setLoginError(error.message);
+    else { setLoginOpen(false); setLoginPassword(""); }
+  }
 
-  const jumpToMonth = (monthKey: string) => {
-    setExpandedMonths((current) => {
-      const next = new Set(current);
-      next.add(monthKey);
-      return next;
-    });
-    window.setTimeout(() => {
-      document.getElementById(`month-${monthKey}`)?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 50);
-  };
+  async function handleLogout() {
+    if (supabase) await supabase.auth.signOut();
+    setAdminMode(false); setSessionEmail(null);
+  }
 
-  const scrollToEvent = (id: number) => {
-    const target = events.find((event) => event.id === id);
-    if (target) {
-      setExpandedMonths((current) => {
-        const next = new Set(current);
-        next.add(target.date.slice(0, 7));
-        return next;
-      });
+  async function saveEvent(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!supabase) { setDbError("Supabase 설정을 확인해 주세요."); return; }
+    if (!sessionEmail) { setLoginError("관리자 로그인이 필요해요."); setLoginOpen(true); return; }
+    setSaving(true); setDbError("");
+    try {
+      let imageUrl = form.imageUrl.trim() || null;
+      let imageKey: string | null = null;
+      if (photoFile) {
+        const safeName = photoFile.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+        const path = `${Date.now()}-${safeName}`;
+        const { error: uploadError } = await supabase.storage.from("timeline-images").upload(path, photoFile, { upsert: false, contentType: photoFile.type });
+        if (uploadError) throw uploadError;
+        const { data: publicData } = supabase.storage.from("timeline-images").getPublicUrl(path);
+        imageUrl = publicData.publicUrl; imageKey = path;
+      }
+      const payload = toRow({ ...form, imageUrl, imageKey });
+      if (editingId !== null) {
+        const updatePayload = { ...payload };
+        if (!photoFile) { delete (updatePayload as Record<string, unknown>).image_key; }
+        const { data: updatedRows, error } = await supabase
+          .from("timeline")
+          .update(updatePayload)
+          .eq("id", editingId)
+          .select("id");
+        if (error) throw error;
+        if (!updatedRows || updatedRows.length === 0) {
+          throw new Error("수정된 기록이 없습니다. 관리자 계정의 UPDATE 권한(RLS 정책) 또는 기록 ID를 확인해 주세요.");
+        }
+      } else {
+        const { error } = await supabase.from("timeline").insert(payload);
+        if (error) throw error;
+      }
+      setEditorOpen(false); setPhotoFile(null); await loadEvents();
+    } catch (error) {
+      console.error("타임라인 저장 오류 상세:", error);
+      let errorMessage = "알 수 없는 오류";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (error && typeof error === "object" && "message" in error) {
+        errorMessage = String((error as { message?: unknown }).message ?? "알 수 없는 오류");
+      } else if (typeof error === "string") {
+        errorMessage = error;
+      } else {
+        try { errorMessage = JSON.stringify(error) || "알 수 없는 오류"; } catch { /* keep fallback */ }
+      }
+      setDbError(`저장에 실패했어요: ${errorMessage}`);
+    } finally { setSaving(false); }
+  }
+
+  async function deleteEvent(event: TimelineEvent) {
+    if (!supabase || !sessionEmail) { setLoginOpen(true); return; }
+    if (!window.confirm(`'${event.title}' 기록을 삭제할까요?`)) return;
+    const { error } = await supabase.from("timeline").delete().eq("id", event.id);
+    if (error) setDbError(`삭제에 실패했어요: ${error.message}`);
+    else {
+      if (event.imageKey) await supabase.storage.from("timeline-images").remove([event.imageKey]);
+      await loadEvents();
     }
+  }
 
-    setSearch("");
-    setFilter("all");
-    setHighlightedEventId(id);
-
-    window.setTimeout(() => {
-      document
-        .getElementById(`event-${id}`)
-        ?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-    }, 80);
-
-    window.setTimeout(() => {
-      setHighlightedEventId(null);
-    }, 1800);
-  };
-
-  const birthdayData =
-    members.map((member) => ({
-      ...member,
-      ...getBirthdayInfo(
-        member.month,
-        member.day
-      ),
-    }));
-
-  const birthdayToday =
-    birthdayData.find(
-      (member) =>
-        member.isToday
-    );
-
-  const isBirthdayToday =
-    Boolean(birthdayToday);
-
-  const isSpecialDay =
-    is365Days ||
-    isYeonchorokAnniversary ||
-    isBirthdayToday;
-
-  const hadesDays =
-    getHadesDays();
+  async function toggleFlag(event: TimelineEvent, flag: "pinned" | "important") {
+    if (!supabase || !sessionEmail) { setLoginOpen(true); return; }
+    const { error } = await supabase.from("timeline").update({ [flag]: !event[flag] }).eq("id", event.id);
+    if (error) setDbError(`변경에 실패했어요: ${error.message}`);
+    else setEvents((prev) => prev.map((item) => item.id === event.id ? { ...item, [flag]: !item[flag] } : item));
+  }
 
   return (
-    <main className="relative min-h-screen overflow-x-hidden bg-[#030712] text-white">
+    <main className="hades-shell">
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gowun+Dodum&family=Orbitron:wght@400;500;600;700;800&display=swap');
+        :root{color-scheme:dark}*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#080711;color:#f5f2ff;font-family:'Gowun Dodum',sans-serif}button,input,textarea,select{font:inherit}button{cursor:pointer}.hades-shell{min-height:100vh;position:relative;overflow:hidden;background:radial-gradient(ellipse at 70% -10%,rgba(107,49,180,.34),transparent 44%),radial-gradient(ellipse at 8% 42%,rgba(71,47,144,.16),transparent 38%),#080711}.hades-shell:before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.16;background-image:linear-gradient(rgba(180,150,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(180,150,255,.08) 1px,transparent 1px);background-size:48px 48px;mask-image:linear-gradient(to bottom,black,transparent 88%)}.topbar{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:22px;padding:22px clamp(18px,3vw,48px);border-bottom:1px solid rgba(182,148,255,.17);background:rgba(8,7,17,.72);backdrop-filter:blur(16px)}.brand{display:flex;align-items:center;gap:14px;min-width:220px}.brand-mark{width:45px;height:45px;display:grid;place-items:center;border:1px solid #9874ff;border-radius:14px;color:#d8c8ff;font:800 18px Orbitron,sans-serif;box-shadow:0 0 25px #794bff36,inset 0 0 18px #794bff20;transform:rotate(-4deg)}.brand-name{font:800 20px Orbitron,sans-serif;letter-spacing:.13em}.brand-sub{margin-top:5px;font-size:10px;letter-spacing:.28em;color:#a59abf}.top-nav{display:flex;align-items:center;gap:10px;flex-wrap:wrap;color:#d5c9ec;font-size:13px;letter-spacing:0}.top-nav a{display:inline-flex;align-items:center;gap:7px;padding:10px 12px;border:1px solid #493663;border-radius:10px;background:#171122;color:#e6dcf8;text-decoration:none;white-space:nowrap;transition:.2s}.top-nav a:hover{border-color:#a58aff;background:#28203a;color:#fff;box-shadow:0 0 18px #8d65ff20}.top-nav a.pv-link{border-color:#8c5caa;background:linear-gradient(135deg,#38214b,#21152e);color:#f0d9ff}.top-actions{display:flex;align-items:center;gap:9px}.ghost-btn,.primary-btn,.tiny-btn{border:1px solid #41335f;background:#151122;color:#e9e0ff;border-radius:10px;padding:10px 13px;font-size:12px;transition:.2s}.ghost-btn:hover,.tiny-btn:hover{border-color:#a18aff;background:#211934}.primary-btn{background:linear-gradient(135deg,#8b5cff,#5d39b8);border-color:#9b7aff;box-shadow:0 7px 22px #6b3de42e}.primary-btn:hover{filter:brightness(1.12)}.hero{position:relative;padding:32px clamp(18px,3vw,48px) 24px;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(280px,.8fr);gap:28px;align-items:end}.hero:after{content:'';position:absolute;right:6%;top:4px;width:32%;height:170px;pointer-events:none;background:linear-gradient(115deg,transparent 10%,#9b74ff0c 32%,#a37bff19 49%,transparent 68%);filter:blur(12px);transform:skewX(-20deg)}.eyebrow{color:#bca7ff;letter-spacing:.28em;text-transform:uppercase;font:600 10px Orbitron,sans-serif}.hero h1{margin:12px 0 8px;font:800 clamp(27px,4vw,52px) Orbitron,sans-serif;letter-spacing:.035em;line-height:1.08;text-shadow:0 0 32px #9266ff40}.hero h1 em{font-style:normal;color:#b59aff}.hero-copy{margin:0;color:#a9a1bf;font-size:13px;line-height:1.8}.hero-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.stat-box{min-width:0;padding:17px 15px;border:1px solid #33264b;border-radius:15px;background:linear-gradient(145deg,#171226d9,#0e0b18d9);box-shadow:inset 0 1px #ffffff08}.stat-label{display:block;color:#968baF;font-size:10px;letter-spacing:.1em;margin-bottom:10px}.stat-box strong{font:700 clamp(19px,2.2vw,28px) Orbitron,sans-serif;color:#f4edff}.workspace{position:relative;z-index:1;display:grid;grid-template-columns:290px minmax(0,1fr);gap:20px;padding:0 clamp(18px,3vw,48px) 42px}.sidebar{min-width:0;display:flex;flex-direction:column;gap:14px}.panel{border:1px solid rgba(157,126,218,.22);border-radius:16px;background:linear-gradient(155deg,rgba(24,18,39,.94),rgba(13,11,23,.94));box-shadow:0 12px 35px #00000018}.panel-inner{padding:17px}.panel-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 15px;font-size:12px;font-weight:700;letter-spacing:.12em;color:#e5dcff}.panel-title small{color:#8d80aa;font-size:10px;font-weight:400;letter-spacing:0}.calendar-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.calendar-month{font:700 15px Orbitron,sans-serif;letter-spacing:.02em}.arrow-btn{width:27px;height:27px;border:1px solid #45345f;border-radius:8px;background:#191328;color:#d7c9ff}.weekdays,.calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;text-align:center}.weekdays{margin-bottom:7px;color:#817797;font-size:10px}.day-btn{position:relative;aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;padding:0;border:1px solid transparent;border-radius:8px;background:transparent;color:#c7bfd9;font-size:11px}.day-btn:hover{background:#28203c}.day-btn.selected{background:#7450c7;border-color:#b5a0ff;color:#fff;box-shadow:0 0 18px #8d65ff45}.day-btn.today:not(.selected){border-color:#8063bd}.day-dots{display:flex;gap:2px;height:3px;justify-content:center}.day-dot{width:3px;height:3px;border-radius:50%}.calendar-foot{display:flex;justify-content:space-between;align-items:center;margin-top:12px;color:#817796;font-size:10px}.text-btn{border:0;background:none;color:#c2aaff;font-size:10px;padding:0}.search-wrap{position:relative}.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#9d8bbd;font-size:15px}.search-input,.select-input,.form-input,.form-textarea{width:100%;border:1px solid #3a2e52;background:#0c0a15;color:#f1eaff;border-radius:10px;padding:11px 12px;outline:none;font-size:12px}.search-input{padding-left:34px}.search-input:focus,.select-input:focus,.form-input:focus,.form-textarea:focus{border-color:#9874ff;box-shadow:0 0 0 3px #8d65ff20}.filter-list{display:flex;flex-direction:column;gap:4px}.filter-btn{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:9px 10px;border:1px solid transparent;border-radius:9px;background:transparent;color:#b9b0ce;text-align:left;font-size:12px}.filter-btn:hover{background:#211a31}.filter-btn.active{border-color:#5c4389;background:linear-gradient(90deg,#382657,#20182f);color:#f5eeff}.filter-count{color:#8f83a8;font:11px Orbitron,sans-serif}.member-list{display:flex;flex-direction:column;gap:9px}.member-row{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;padding:5px 0;border:0;background:none;color:#c7bfd9;font-size:12px;text-align:left}.member-name{display:flex;align-items:center;gap:9px}.member-dot{width:8px;height:8px;border-radius:50%;box-shadow:0 0 11px currentColor}.member-row.active .member-name{color:#fff}.member-count{font:11px Orbitron,sans-serif;color:#8e83a6}.main-content{min-width:0}.toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:15px 17px;margin-bottom:15px}.toolbar-left{display:flex;align-items:center;gap:12px;min-width:0}.toolbar-title{font-size:14px;font-weight:700;color:#f0eaff}.toolbar-sub{margin-top:4px;font-size:10px;color:#8f84a5}.filter-chips{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.chip{padding:7px 10px;border:1px solid #3b2f52;border-radius:999px;background:#120f1d;color:#a99fbe;font-size:10px;white-space:nowrap}.chip.active{background:#382557;border-color:#8564c6;color:#f1e7ff}.toolbar-right{display:flex;align-items:center;gap:8px}.select-input{width:auto;min-width:108px;padding:9px 10px}.pinned-toggle{display:flex;align-items:center;gap:7px;color:#b6accb;font-size:11px;white-space:nowrap}.pinned-toggle input{accent-color:#a17aff}.result-line{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:18px 2px 13px}.result-line h2{margin:0;font-size:15px;font-weight:700}.result-line p{margin:5px 0 0;color:#8e84a4;font-size:11px}.result-count{font:600 11px Orbitron,sans-serif;color:#bba6ff}.cards-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.event-card{min-width:0;overflow:hidden;border:1px solid rgba(156,126,216,.22);border-radius:15px;background:linear-gradient(160deg,#171225,#0f0c19);transition:transform .22s,border-color .22s,box-shadow .22s}.event-card:hover{transform:translateY(-3px);border-color:#7658ac;box-shadow:0 14px 30px #00000035}.card-media{position:relative;aspect-ratio:16/9;overflow:hidden;background:radial-gradient(ellipse at 50% 20%,#45306b,#171024 70%);border-bottom:1px solid #322542}.card-media img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s}.event-card:hover .card-media img{transform:scale(1.035)}.media-placeholder{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#9b86c6;background:radial-gradient(ellipse at center,#33234f 0%,#151020 65%)}.placeholder-mark{font:800 23px Orbitron,sans-serif;letter-spacing:.16em;text-shadow:0 0 22px #9c70ff70}.placeholder-caption{font:10px Orbitron,sans-serif;letter-spacing:.24em;color:#796a99}.video-frame{width:100%;height:100%;border:0;display:block}.card-top-tags{position:absolute;left:10px;top:10px;display:flex;gap:5px;flex-wrap:wrap}.tag{padding:5px 7px;border:1px solid #ffffff22;border-radius:6px;background:#090711d9;color:#e8dfff;font-size:9px;backdrop-filter:blur(8px)}.tag.important{background:#4b2d1bdb;border-color:#c98749;color:#ffd39e}.tag.pinned{background:#39265ddf;border-color:#9270d9;color:#e4d6ff}.card-date{position:absolute;right:10px;bottom:10px;padding:8px 11px;border:1px solid #c6adff99;border-radius:8px;background:#090711f2;color:#fff;font:700 13px Orbitron,sans-serif;letter-spacing:.04em;box-shadow:0 3px 15px #0009,0 0 14px #9b74ff22;backdrop-filter:blur(8px)}.card-body{padding:14px}.card-meta{display:flex;align-items:center;justify-content:space-between;gap:7px;margin-bottom:9px}.category-tag{color:#bda7ff;font-size:10px}.member-tag{display:flex;align-items:center;gap:5px;color:#b9afca;font-size:10px}.member-tag i{width:6px;height:6px;border-radius:50%;display:inline-block}.card-title{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:42px;margin:0;color:#f4efff;font-size:15px;line-height:1.45;font-weight:700;word-break:keep-all}.card-description{display:block;overflow:visible;min-height:0;height:auto;max-height:none;margin:10px 0 15px;color:#c0b6d0;font-size:13px;line-height:1.85;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}.card-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:10px;border-top:1px solid #2b223b}.card-footer-left{display:flex;gap:6px;flex-wrap:wrap}.mini-link{border:0;background:none;color:#c1aaff;padding:0;font-size:10px;text-decoration:none}.card-admin{display:flex;gap:5px}.tiny-btn{padding:5px 7px;border-radius:6px;font-size:10px}.empty-state{grid-column:1/-1;padding:60px 20px;text-align:center;border:1px dashed #49365e;border-radius:16px;background:#100d1a}.empty-symbol{font:700 30px Orbitron,sans-serif;color:#7e61b5}.empty-state h3{margin:12px 0 7px;font-size:15px}.empty-state p{margin:0;color:#8f84a4;font-size:12px}.notice{padding:11px 13px;margin-bottom:14px;border:1px solid #744b58;border-radius:10px;background:#29131b;color:#ffc5d1;font-size:12px;line-height:1.6;overflow-wrap:anywhere}.loading-state{grid-column:1/-1;padding:50px;text-align:center;color:#b9a6e8}.footer{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:24px;padding:18px 4px;color:#726783;font:10px Orbitron,sans-serif;letter-spacing:.12em}.footer strong{color:#a895ce;font-weight:600}.modal-backdrop{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;padding:18px;background:#05040bd9;backdrop-filter:blur(10px)}.modal{width:min(620px,100%);max-height:92vh;overflow:auto;border:1px solid #5c477f;border-radius:18px;background:#110d1c;box-shadow:0 25px 90px #0009}.modal-head{position:sticky;top:0;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px;border-bottom:1px solid #342647;background:#110d1c}.modal-head h2{margin:0;font-size:15px}.close-btn{width:30px;height:30px;border:1px solid #443356;border-radius:8px;background:#20172d;color:#e7dcff;font-size:18px}.modal-form{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:20px}.field{display:flex;flex-direction:column;gap:7px;min-width:0}.field.full{grid-column:1/-1}.field label{color:#bcb0d1;font-size:11px}.form-textarea{min-height:110px;resize:vertical;line-height:1.65}.form-checks{display:flex;gap:18px;align-items:center;flex-wrap:wrap}.form-checks label{display:flex;align-items:center;gap:7px}.form-checks input{accent-color:#9c7aff}.modal-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:8px;padding-top:7px}.login-modal{width:min(400px,100%);padding:22px}.login-modal h2{margin:0 0 8px}.login-modal p{margin:0 0 18px;color:#a69bb9;font-size:12px;line-height:1.6}.login-fields{display:flex;flex-direction:column;gap:12px}.login-fields label{display:flex;flex-direction:column;gap:7px;color:#c8bddb;font-size:11px}.login-error{color:#ff9cae;font-size:11px}.small-note{color:#7f7494;font-size:10px;line-height:1.6;margin-top:12px}.mobile-filter-btn{display:none}.mobile-only{display:none}
+        /* 가독성 개선: 한국어 본문은 선명한 산세리프, 작은 보조 문구도 충분한 크기로 */
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap');
+        html,body,.hades-shell{font-family:'Noto Sans KR','Malgun Gothic',sans-serif;letter-spacing:0;}
+        .brand-sub{font-size:11px;letter-spacing:.12em}.top-nav{font-size:13px}.eyebrow{font-size:11px;letter-spacing:.16em}.hero-copy{font-size:15px;line-height:1.9;color:#c2b9d5}.stat-label{font-size:12px;letter-spacing:.04em;color:#b7accd}.stat-box strong{font-size:clamp(22px,2.4vw,31px)}
+        .panel-title{font-size:14px;letter-spacing:.04em}.panel-title small{font-size:12px}.weekdays{font-size:12px;color:#a89dbd}.day-btn{font-size:13px}.calendar-foot{font-size:11px;color:#a79bbd}.text-btn{font-size:12px}.search-input,.select-input,.form-input,.form-textarea{font-size:14px}.filter-btn,.member-row{font-size:14px}.filter-count,.member-count{font-size:12px}.toolbar-title{font-size:16px}.toolbar-sub{font-size:12px;color:#b0a5c4}.chip{font-size:12px}.pinned-toggle{font-size:13px}.result-line h2{font-size:18px}.result-line p{font-size:13px;color:#b0a5c4}.result-count{font-size:12px}.card-date{font-size:12px}.tag{font-size:11px}.card-meta .category-tag,.member-tag{font-size:12px}.card-title{font-size:17px;line-height:1.55;min-height:52px}.card-description{font-size:14px;line-height:1.85;color:#d0c7df;min-height:0;max-height:none;overflow:visible;display:block}.mini-link{font-size:12px}.tiny-btn{font-size:12px}.footer{font-size:11px;letter-spacing:.06em;color:#9a8eaf}.field label,.login-fields label{font-size:13px}.login-modal p{font-size:14px;color:#c0b6d0}.small-note{font-size:12px;color:#a79bbd}.modal-head h2{font-size:18px}.empty-state h3{font-size:18px}.empty-state p,.notice{font-size:14px}
+        .start-date-line{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:17px;color:#b9aecb;font-size:13px}.start-date-line strong{color:#eee5ff;font-size:14px}.start-date-line strong:last-of-type{color:#d1baff;font-family:Orbitron,sans-serif}.anniversary-panel{position:relative;overflow:hidden;border-color:#8d5b8a;background:radial-gradient(ellipse at 100% 0%,#7d3f7638,transparent 55%),linear-gradient(145deg,#281427,#15101d)}.anniversary-panel:after{content:'✦';position:absolute;right:15px;top:9px;color:#ff9bcf;font-size:34px;opacity:.16}.anniversary-date{font-size:12px;color:#e6a8ce;letter-spacing:.08em}.anniversary-name{margin:9px 0 5px;font-size:20px;font-weight:800;color:#fff}.anniversary-count{display:inline-flex;align-items:center;gap:7px;margin-top:9px;padding:7px 11px;border:1px solid #d56bb066;border-radius:9px;background:#9e3d7528;color:#ffc5e2;font-size:14px;font-weight:800}.anniversary-note{margin-top:8px;font-size:12px;line-height:1.7;color:#c5adc2}
+        .soop-member-list{display:flex;flex-direction:column;gap:9px}
+        .soop-member{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #332744;border-radius:11px;background:#100d1b;color:#f0eaff;text-decoration:none;transition:border-color .2s,background .2s}
+        .soop-member:hover{border-color:#8564c6;background:#21182f}
+        .soop-avatar{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border-radius:10px;background:#21182f;font-size:13px;font-weight:800}
+        .soop-member-info{min-width:0;flex:1}.soop-member-name{font-size:13px;font-weight:700}
+        .soop-member-id{display:block;margin-top:3px;color:#968baF;font-size:10px}
+        .soop-status{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;font-size:11px;font-weight:700}
+        .soop-status-dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+        .soop-live{color:#75f0a1}.soop-live .soop-status-dot{background:#47e783;box-shadow:0 0 10px #47e783aa}
+        .soop-offline{color:#a69bb9}.soop-offline .soop-status-dot{background:#716780}
+        .soop-unknown{color:#f2cc78}.soop-unknown .soop-status-dot{background:#e8b94e}
+        .soop-panel-foot{margin-top:11px;color:#a79bbd;font-size:11px;line-height:1.6}
+        .soop-panel-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+        .soop-live-count{padding:4px 7px;border:1px solid #286a45;border-radius:999px;background:#10331f;color:#80f0a8;font-size:10px;font-weight:700}
+        @media(max-width:1250px){.workspace{grid-template-columns:260px minmax(0,1fr);gap:14px}.cards-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.top-nav{gap:6px}.top-nav a{padding:8px 9px;font-size:12px}.hero{grid-template-columns:minmax(0,1.2fr) minmax(260px,.9fr)}}
+        @media(max-width:850px){.topbar{padding:15px 18px;flex-wrap:wrap}.top-nav{display:flex;order:3;width:100%;justify-content:flex-start}.hero{grid-template-columns:1fr;padding-top:25px}.hero-stats{max-width:600px}.workspace{grid-template-columns:1fr}.sidebar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}.sidebar .panel:first-child{grid-row:span 2}.cards-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.toolbar{align-items:flex-start}.toolbar-right{flex-wrap:wrap}.brand{min-width:0}.brand-name{font-size:16px}}
+        @media(max-width:560px){.top-nav{gap:6px}.top-nav a{padding:7px 8px;font-size:11px}.hero-copy{font-size:14px}.stat-label{font-size:10px}.stat-box strong{font-size:18px}.filter-btn,.member-row{font-size:14px}.card-title{font-size:17px}.card-description{font-size:14px;line-height:1.85;min-height:0;max-height:none;overflow:visible;display:block}.anniversary-name{font-size:19px}.topbar{padding:13px 14px}.brand-mark{width:38px;height:38px}.brand-name{font-size:13px;letter-spacing:.08em}.brand-sub{font-size:8px}.top-actions .ghost-btn{display:none}.hero{padding:23px 14px 18px;gap:18px}.hero h1{font-size:29px}.hero-copy{font-size:11px}.hero-stats{gap:7px}.stat-box{padding:12px 10px;border-radius:11px}.stat-label{font-size:8px}.stat-box strong{font-size:18px}.workspace{padding:0 14px 25px}.sidebar{grid-template-columns:1fr}.sidebar .panel:first-child{grid-row:auto}.panel-inner{padding:14px}.toolbar{padding:12px}.toolbar-left{width:100%}.toolbar-right{width:100%;justify-content:space-between}.filter-chips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:3px}.chip{flex-shrink:0}.cards-grid{grid-template-columns:1fr;gap:12px}.card-media{aspect-ratio:16/8}.card-title{min-height:0}.card-description{min-height:0}.result-line{margin-top:15px}.footer{flex-direction:column;align-items:flex-start}.modal-form{grid-template-columns:1fr;padding:15px}.field.full,.modal-actions{grid-column:auto}.modal-head{padding:15px}.modal-form .form-checks{gap:12px}}
+      `}</style>
 
-      {/* =========================
-          HADES SIDE IMAGES
-          ========================= */}
-      <div
-        className="pointer-events-none absolute left-1/2 top-[180px] z-0 hidden -translate-x-1/2 2xl:block"
-        style={{ width: "calc(100% - 40px)", maxWidth: "1400px" }}
-      >
-        <img
-          src="/hades-left.png"
-          alt="HADES"
-          className="absolute left-0 h-[560px] w-[170px] rounded-3xl object-cover opacity-80 shadow-[0_0_30px_rgba(236,72,153,0.22)]"
-        />
-        <img
-          src="/hades-right.png"
-          alt="HADES"
-          className="absolute right-0 h-[560px] w-[170px] rounded-3xl object-cover opacity-80 shadow-[0_0_30px_rgba(34,211,238,0.18)]"
-        />
-      </div>
-
-      {/* =========================
-          SPECIAL DAY FIREWORKS
-          ========================= */}
-
-      {isSpecialDay && (!isYeonchorokAnniversary || showYeonchorokAnniversary) && (
-        <div className="pointer-events-none fixed inset-0 z-[100] overflow-hidden">
-
-          <div className="absolute inset-0 bg-black/[0.08]" />
-
-          {isYeonchorokAnniversary && (
-            <button
-              type="button"
-              aria-label="연초록 2주년 기념 연출 닫기"
-              onClick={() => setShowYeonchorokAnniversary(false)}
-              className="pointer-events-auto absolute right-4 top-4 z-[110] flex h-11 w-11 items-center justify-center rounded-full border border-lime-300/80 bg-[#14210a]/95 text-2xl font-black leading-none text-lime-200 shadow-[0_0_22px_rgba(163,230,53,0.7)] transition hover:scale-110 hover:bg-lime-300 hover:text-[#14210a] focus:outline-none focus:ring-2 focus:ring-lime-200"
-            >
-              ×
-            </button>
-          )}
-
-          <div className={`firework firework-1 ${isYeonchorokAnniversary ? "firework-lime" : ""}`}>
-            {Array.from({
-              length: 12,
-            }).map((_, index) => (
-              <span
-                key={index}
-              />
-            ))}
-          </div>
-
-          <div className={`firework firework-2 ${isYeonchorokAnniversary ? "firework-lime" : ""}`}>
-            {Array.from({
-              length: 12,
-            }).map((_, index) => (
-              <span
-                key={index}
-              />
-            ))}
-          </div>
-
-          <div className={`firework firework-3 ${isYeonchorokAnniversary ? "firework-lime" : ""}`}>
-            {Array.from({
-              length: 12,
-            }).map((_, index) => (
-              <span
-                key={index}
-              />
-            ))}
-          </div>
-
-          <div className="absolute inset-x-4 top-[24%] flex justify-center">
-
-            <div className="rounded-3xl border border-white/15 bg-[#080b18]/90 px-6 py-5 text-center shadow-2xl backdrop-blur-xl sm:px-8 sm:py-6">
-
-              {is365Days ? (
-                <>
-                  <p className="text-[10px] font-black tracking-[0.35em] text-cyan-300">
-                    HADES ANNIVERSARY
-                  </p>
-
-                  <p className="mt-2 text-3xl font-black sm:text-5xl">
-                    1ST ANNIVERSARY
-                  </p>
-
-                  <p className="mt-2 text-xs font-bold text-slate-400 sm:text-sm">
-                    HADES와 함께한 1년
-                  </p>
-                </>
-              ) : isYeonchorokAnniversary ? (
-                <>
-                  <p className="text-[10px] font-black tracking-[0.35em] text-lime-300">
-                    HAPPY 2ND ANNIVERSARY
-                  </p>
-
-                  <p className="mt-2 text-3xl font-black text-lime-200 sm:text-5xl">
-                    연초록
-                  </p>
-
-                  <p className="mt-2 text-xl font-black text-lime-300 sm:text-2xl">
-                    STREAMING 2ND ANNIVERSARY
-                  </p>
-
-                  <p className="mt-2 text-xs font-bold text-slate-300 sm:text-sm">
-                    2026.10.21 · 방송 2주년을 축하합니다
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="text-[10px] font-black tracking-[0.35em] text-pink-300">
-                    HAPPY BIRTHDAY
-                  </p>
-
-                  <p className="mt-2 text-3xl font-black sm:text-5xl">
-                    {birthdayToday?.name}
-                  </p>
-
-                  <p className="mt-2 text-xs font-bold text-slate-400 sm:text-sm">
-                    생일을 축하합니다
-                  </p>
-                </>
-              )}
-
-              <div className="mt-3 text-xl tracking-[0.5em]">
-                ✦ ✦ ✦
-              </div>
-
-            </div>
-          </div>
-
-          {isYeonchorokAnniversary && (
-            <div className="dino-anniversary-stage absolute bottom-[7%] left-1/2 flex flex-col items-center">
-              <div className="dino-speech-bubble mb-1 rounded-2xl border-2 border-lime-300/90 bg-[#14210a]/95 px-4 py-2 text-center font-black text-lime-200 shadow-[0_0_28px_rgba(163,230,53,0.65)]">
-                초록초록! 2주년 축하해!
-                <span className="dino-bubble-tail" />
-              </div>
-              <div className="dino-character select-none" aria-hidden="true">🦖</div>
-              <div className="dino-ground-glow" />
-              <div className="dino-footprints" aria-hidden="true">🐾　🐾　🐾</div>
-            </div>
-          )}
+      <header className="topbar">
+        <div className="brand">
+          <div className="brand-mark">H</div>
+          <div><div className="brand-name">HADES TIMELINE</div><div className="brand-sub">FROM HELL TO THE STAGE</div></div>
         </div>
-      )}
-
-      {/* =========================
-          365 DAYS
-          ========================= */}
-
-      {is365Days && (
-        <div className="pointer-events-none fixed inset-0 z-[90] overflow-hidden">
-
-          <div className="absolute inset-0 bg-purple-500/[0.08] backdrop-blur-[1px]" />
-
-          <div className="absolute inset-x-4 top-[38%] mx-auto max-w-xl text-center">
-
-            <div className="rounded-[2rem] border border-white/15 bg-[#080b18]/90 px-6 py-8 shadow-2xl backdrop-blur-xl">
-
-              <p className="text-xs font-black tracking-[0.4em] text-cyan-300">
-                FROM HELL TO THE STAGE
-              </p>
-
-              <div className="mt-3 text-5xl font-black sm:text-7xl">
-                365 DAYS
-              </div>
-
-              <p className="mt-3 text-sm font-bold text-slate-400">
-                HADES와 함께한 1년
-              </p>
-
-              <div className="mt-5 text-2xl">
-                ✦ ✦ ✦
-              </div>
-
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* =========================
-          배경
-          ========================= */}
-
-      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{
-            backgroundImage:
-              "url('/space-bg.jpg.jfif')",
-          }}
-        />
-
-        <div className="absolute inset-0 bg-[#030712]/20" />
-
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(168,85,247,0.16),transparent_30%),radial-gradient(circle_at_80%_30%,rgba(236,72,153,0.10),transparent_28%),radial-gradient(circle_at_50%_90%,rgba(6,182,212,0.08),transparent_30%)]" />
-
-        <div className="absolute inset-0 opacity-30 [background-image:radial-gradient(circle,white_1px,transparent_1px)] [background-size:55px_55px]" />
-
-      </div>
-
-      {/* =========================
-          HEADER
-          ========================= */}
-
-      <header className="sticky top-0 z-30 border-b border-white/10 bg-[#030712]/75 backdrop-blur-2xl">
-
-        <div className="mx-auto flex max-w-5xl flex-col gap-5 px-4 py-5 sm:flex-row sm:items-center sm:justify-between">
-
-          <div>
-
-            <div className="flex items-center gap-3">
-
-              <div className="h-12 w-12 shrink-0 sm:h-14 sm:w-14">
-
-                <img
-                  src="/hades-mark.png"
-                  alt="HADES"
-                  className="h-full w-full object-contain"
-                />
-
-              </div>
-
-              <div>
-
-                <h1 className="text-2xl font-black sm:text-3xl">
-                  HADES TIMELINE
-                </h1>
-
-                <p className="mt-1 text-[9px] font-black uppercase tracking-[0.32em] text-cyan-300">
-                  FROM HELL TO THE STAGE
-                </p>
-
-              </div>
-
-            </div>
-
-            <p className="mt-3 text-xs font-medium text-slate-400 sm:text-sm">
-              The Journey of HADES by코코몽
-            </p>
-
-            {user ? (
-              <button
-                type="button"
-                onClick={async () => {
-                  await supabase.auth.signOut();
-                  setUser(null);
-                }}
-                className="mt-3 rounded-xl border border-pink-400/20 bg-pink-400/10 px-4 py-2 text-xs font-bold text-pink-300"
-              >
-                관리자 로그아웃
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={async () => {
-                  const email =
-                    window.prompt(
-                      "관리자 이메일"
-                    );
-
-                  const password =
-                    window.prompt(
-                      "관리자 비밀번호"
-                    );
-
-                  if (
-                    !email ||
-                    !password
-                  ) {
-                    return;
-                  }
-
-                  const { error } =
-                    await supabase.auth.signInWithPassword(
-                      {
-                        email,
-                        password,
-                      }
-                    );
-
-                  if (error) {
-                    alert(
-                      "로그인에 실패했습니다."
-                    );
-                  }
-                }}
-                className="mt-3 rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-xs font-bold text-cyan-300"
-              >
-                🔐 관리자 로그인
-              </button>
-            )}
-
-          </div>
-
-          {user && (
-            <button
-              type="button"
-              onClick={() =>
-                setShowForm(
-                  !showForm
-                )
-              }
-              className="w-full rounded-2xl bg-gradient-to-r from-fuchsia-500 via-purple-500 to-cyan-500 px-5 py-3.5 text-sm font-black sm:w-auto"
-            >
-              {showForm
-                ? "닫기"
-                : "＋ 기록 추가"}
-            </button>
-          )}
-
+        <nav className="top-nav" aria-label="하데스 공식 링크"><a href="https://cafe.naver.com/moomoo" target="_blank" rel="noreferrer">☕ 팬카페 ↗</a><a href="https://www.youtube.com/channel/UCZjhbR54UmZ67ixwIpM0eBQ" target="_blank" rel="noreferrer">▶ 공식 유튜브 ↗</a><a className="pv-link" href="https://youtu.be/J82aRVvDOwk?si=BEFKHDZxGCSLkX4X" target="_blank" rel="noreferrer">✦ DEBUT PV ↗</a></nav>
+        <div className="top-actions">
+          {adminMode ? <><span className="brand-sub">ADMIN</span><button className="ghost-btn" onClick={openNew}>＋ 기록 추가</button><button className="ghost-btn" onClick={() => void handleLogout()}>로그아웃</button></> : <button className="ghost-btn" onClick={() => setLoginOpen(true)}>관리자 로그인</button>}
         </div>
       </header>
 
-      <div className="mx-auto max-w-5xl px-4 py-7 sm:py-10">
+      <section className="hero">
+        <div><div className="eyebrow">THE CHRONICLE OF HADES</div><h1>EVERY MOMENT.<br /><em>ONE HISTORY.</em></h1><p className="hero-copy">하데스가 걸어온 순간들을 기록하는 아카이브.<br />무대 위의 기억부터 작은 순간까지, 우리의 시간을 모읍니다.</p><div className="start-date-line">활동 시작일 <strong>2025.09.05</strong><span>·</span><strong>D+{daysActive.toLocaleString("ko-KR")}</strong><span>오늘까지 함께한 시간</span></div></div>
+        <div className="hero-stats"><Stat label="TOTAL ARCHIVES" value={events.length.toLocaleString("ko-KR")} /><Stat label="DAYS TOGETHER" value={daysActive.toLocaleString("ko-KR")} accent="#c2a6ff" /><Stat label="PINNED MOMENTS" value={events.filter((event) => event.pinned).length.toLocaleString("ko-KR")} accent="#ffd85a" /></div>
+      </section>
 
-        {/* =========================
-            INTRO
-            ========================= */}
+      <div className="workspace">
+        <aside className="sidebar">
+          <section className="panel"><div className="panel-inner">
+            <div className="calendar-head"><button className="arrow-btn" aria-label="이전 달" onClick={() => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1, 1))}>‹</button><div className="calendar-month">{calendarDate.getFullYear()} <span style={{ color: "#bba3ff" }}>{MONTH_NAMES[calendarDate.getMonth()]}</span></div><button className="arrow-btn" aria-label="다음 달" onClick={() => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 1))}>›</button></div>
+            <div className="weekdays">{WEEKDAYS.map((day) => <span key={day}>{day}</span>)}</div>
+            <div className="calendar-grid">{calendarCells.map((date, index) => {
+              if (!date) return <span key={`blank-${index}`} />;
+              const records = monthEvents.filter((event) => event.date === date);
+              const today = date === new Date().toISOString().slice(0, 10);
+              const selected = selectedDate === date;
+              const colors = Array.from(new Set(records.map((event) => MEMBER_COLORS[getMember(event)]).filter(Boolean))).slice(0, 3);
+              return <button key={date} className={`day-btn ${selected ? "selected" : ""} ${today ? "today" : ""}`} title={`${date} · 기록 ${records.length}개`} onClick={() => setSelectedDate(selected ? "" : date)}><span>{Number(date.slice(-2))}</span><span className="day-dots">{colors.map((color, i) => <i key={i} className="day-dot" style={{ background: color }} />)}</span></button>;
+            })}</div>
+            <div className="calendar-foot"><span>{monthEvents.length} RECORDS THIS MONTH</span><button className="text-btn" onClick={() => setSelectedDate("")}>날짜 초기화</button></div>
+          </div></section>
 
-        <div className="mb-7 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.045] backdrop-blur-xl">
+          <section className="panel"><div className="panel-inner"><h3 className="panel-title">SEARCH ARCHIVE <small>기록 검색</small></h3><div className="search-wrap"><span className="search-icon">⌕</span><input className="search-input" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="제목, 내용 검색..." /></div></div></section>
 
-          <div className="p-5 sm:p-8">
+          <section className="panel"><div className="panel-inner"><h3 className="panel-title">CATEGORIES <small>분류별 기록</small></h3><div className="filter-list">{categories.map((category) => <button key={category} className={`filter-btn ${categoryFilter === category ? "active" : ""}`} onClick={() => setCategoryFilter(category)}><span>{category === "전체" ? "✦" : "◇"} &nbsp;{category}</span><span className="filter-count">{category === "전체" ? events.length : events.filter((event) => event.category === category).length}</span></button>)}</div></div></section>
 
-            <div className="flex flex-col gap-7 lg:flex-row lg:items-center lg:justify-between">
+          <section className="panel"><div className="panel-inner">
+            <div className="soop-panel-head"><h3 className="panel-title" style={{ marginBottom: 0 }}>SOOP LIVE <small>실시간 방송 현황</small></h3><span className="soop-live-count">{SOOP_MEMBERS.filter((member) => soopStatuses[member.id]?.live === true).length} LIVE</span></div>
+            <div className="soop-member-list" style={{ marginTop: 13 }}>
+              {SOOP_MEMBERS.map((member) => {
+                const status = soopStatuses[member.id];
+                const live = status?.live === true;
+                const offline = status?.live === false;
+                const statusClass = live ? "soop-live" : offline ? "soop-offline" : "soop-unknown";
+                const statusText = soopLoading && !status ? "확인 중" : live ? "방송 중" : offline ? "방송 종료" : "확인 불가";
+                return <a className="soop-member" key={member.id} href={member.url} target="_blank" rel="noreferrer" aria-label={`${member.name} SOOP 방송국 열기`}>
+                  <span className="soop-avatar" style={{ color: MEMBER_COLORS[member.name], border: `1px solid ${MEMBER_COLORS[member.name]}55` }}>{member.name.slice(0, 1)}</span>
+                  <span className="soop-member-info"><span className="soop-member-name">{member.name}</span><span className="soop-member-id">{member.id}</span></span>
+                  <span className={`soop-status ${statusClass}`}><i className="soop-status-dot" />{statusText}</span>
+                </a>;
+              })}
+            </div>
+            <div className="soop-panel-foot">{soopLoading && !soopCheckedAt ? "SOOP 방송 상태를 확인하고 있어요." : soopCheckedAt ? `약 60초마다 자동 갱신 · 마지막 확인 ${new Date(soopCheckedAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}` : "상태를 확인하지 못했어요. 잠시 후 자동으로 다시 확인합니다."} · 항목을 누르면 방송국으로 이동</div>
+          </div></section>
 
-              <div>
+          <section className="panel"><div className="panel-inner"><h3 className="panel-title">THE MEMBERS <small>멤버별 기록</small></h3><div className="member-list"><button className={`member-row ${memberFilter === "전체" ? "active" : ""}`} onClick={() => setMemberFilter("전체")}><span className="member-name"><i className="member-dot" style={{ color: "#b7a0ff", background: "#b7a0ff" }} />전체 멤버</span><span className="member-count">{events.length}</span></button>{totalMembers.map((member) => <button key={member.name} className={`member-row ${memberFilter === member.name ? "active" : ""}`} onClick={() => setMemberFilter(memberFilter === member.name ? "전체" : member.name)}><span className="member-name"><i className="member-dot" style={{ color: member.color, background: member.color }} />{member.name}</span><span className="member-count">{member.count}</span></button>)}</div></div></section>
 
-                <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-300">
-                  THE JOURNEY
-                </p>
+          <section className="panel anniversary-panel"><div className="panel-inner"><h3 className="panel-title">UPCOMING ANNIVERSARY <small> 기념일</small></h3><div className="anniversary-date">2026.11.11 · BIRTHDAY</div><div className="anniversary-name">솜주먹 생일</div><div className="anniversary-count">{birthdayDaysLeft >= 0 ? `D-${birthdayDaysLeft}` : "기념일이 지났어요"}</div><div className="anniversary-note">분홍빛으로 기억할 솜주먹의 특별한 날</div></div></section>
+        </aside>
 
-                <h2 className="mt-2 text-2xl font-black sm:text-3xl">
-                  THE STORY OF HADES
-                </h2>
-
-                <p className="mt-3 text-sm leading-6 text-slate-400 sm:text-base sm:leading-7">
-                  HADES의 시작부터 지금까지,
-                  모든 순간을 기록합니다. 
-                </p>
-
-                <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-
-                  <a
-                    href="https://www.youtube.com/@HADES_offi"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-xl border border-red-400/20 bg-red-500/10 px-4 py-2.5 text-center text-xs font-black text-red-300"
-                  >
-                    ▶ HADES 공식 YouTube
-                  </a>
-
-                  <a
-                    href="https://www.youtube.com/watch?v=J82aRVvDOwk"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-xl border border-purple-400/20 bg-purple-500/10 px-4 py-2.5 text-center text-xs font-black text-purple-300"
-                  >
-                    🎬 하데스 HADES Debut PV
-                  </a>
-
-                  <a
-                    href="https://cafe.naver.com/moomoo"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-xl border border-green-400/20 bg-green-400/10 px-4 py-2.5 text-center text-xs font-black text-green-300"
-                  >
-                    ☕ MOO & HADES 공식 팬카페
-                  </a>
-
+        <section className="main-content">
+          {dbError && <div className="notice">{dbError}</div>}
+          <div className="panel toolbar"><div className="toolbar-left"><div><div className="toolbar-title">TIMELINE ARCHIVE</div><div className="toolbar-sub">하데스의 순간을 찾아보세요</div></div></div><div className="toolbar-right"><label className="pinned-toggle"><input type="checkbox" checked={showPinnedOnly} onChange={(e) => setShowPinnedOnly(e.target.checked)} /> 고정 기록만</label><select className="select-input" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} aria-label="정렬"><option value="latest">최신순</option><option value="oldest">오래된순</option><option value="title">제목순</option></select>{adminMode && <button className="primary-btn" onClick={openNew}>＋ 기록 추가</button>}</div></div>
+          <div className="filter-chips">{categories.slice(0, 8).map((category) => <button key={category} className={`chip ${categoryFilter === category ? "active" : ""}`} onClick={() => setCategoryFilter(category)}>{category}</button>)}{selectedDate && <button className="chip active" onClick={() => setSelectedDate("")}>날짜 {formatDate(selectedDate)} ×</button>}{memberFilter !== "전체" && <button className="chip active" onClick={() => setMemberFilter("전체")}>{memberFilter} ×</button>}<button className="chip" onClick={resetFilters}>필터 초기화 ↺</button></div>
+          <div className="result-line"><div><h2>{selectedDate ? `${formatDate(selectedDate)} 기록` : memberFilter !== "전체" ? `${memberFilter}의 기록` : categoryFilter !== "전체" ? `${categoryFilter} 기록` : "모든 순간"}</h2><p>HADES의 활동을 시간순으로 기록합니다.</p></div><span className="result-count">{filteredEvents.length} RESULTS</span></div>
+          <div className="cards-grid">
+            {loading ? <div className="loading-state">ARCHIVE LOADING...</div> : filteredEvents.length === 0 ? <div className="empty-state"><div className="empty-symbol">H.</div><h3>아직 표시할 기록이 없어요</h3><p>다른 날짜나 카테고리를 선택하거나 검색어를 바꿔보세요.</p><div style={{ marginTop: 16 }}><button className="ghost-btn" onClick={resetFilters}>필터 초기화</button>{adminMode && <button className="primary-btn" style={{ marginLeft: 8 }} onClick={openNew}>첫 기록 추가하기</button>}</div></div> : filteredEvents.map((event) => {
+              const member = getMember(event); const memberColor = MEMBER_COLORS[member] ?? "#b8a2ff"; const videoId = youtubeId(event.youtubeUrl);
+              return <article className="event-card" key={event.id}>
+                <div className="card-media">{videoId ? <iframe className="video-frame" src={`https://www.youtube-nocookie.com/embed/${videoId}`} title={event.title} loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen /> : event.imageUrl ? <img src={event.imageUrl} alt={event.title} loading="lazy" /> : <div className="media-placeholder"><div className="placeholder-mark">HADES</div><div className="placeholder-caption">MEMORY ARCHIVE</div></div>}
+                  <div className="card-top-tags">{event.pinned && <span className="tag pinned">★ PINNED</span>}{event.important && <span className="tag important">✦ IMPORTANT</span>}</div><span className="card-date">{formatDate(event.date)}</span>
                 </div>
-
-              </div>
-
-              <div className="hades-since-neon relative rounded-2xl border-2 border-pink-400/90 bg-pink-500/[0.07] p-5 text-center sm:min-w-[230px]">
-
-                <div className="hades-neon-spark pointer-events-none absolute inset-[-2px] rounded-2xl border-2 border-pink-300" />
-
-                <div className="relative z-10">
-                  <p className="text-[10px] font-black tracking-[0.3em] text-pink-200">
-                    HADES SINCE
-                  </p>
-
-                  <p className="mt-1 text-xs font-bold text-slate-400">
-                    2025.09.05
-                  </p>
-
-                  <div className="mt-2 text-4xl font-black text-white">
-                    DAY {hadesDays}
-                  </div>
-
-                  <p className="mt-1 text-[11px] font-bold text-slate-400">
-                    함께한 시간
-                  </p>
-                </div>
-
-              </div>
-
-            </div>
+                <div className="card-body"><div className="card-meta"><span className="category-tag">◇ {event.category || "기타"}{event.time ? ` · ${event.time}` : ""}</span><span className="member-tag"><i style={{ background: memberColor }} />{member}</span></div><h3 className="card-title">{event.title}</h3><p className="card-description">{event.description || "기록된 설명이 없습니다."}</p><div className="card-footer"><div className="card-footer-left">{event.youtubeUrl && !videoId && <a className="mini-link" href={event.youtubeUrl} target="_blank" rel="noreferrer">▶ 영상 보기</a>}{event.imageUrl && videoId && <a className="mini-link" href={event.imageUrl} target="_blank" rel="noreferrer">사진 보기 ↗</a>}{!event.imageUrl && !event.youtubeUrl && <span style={{ color: "#6f6584", fontSize: 10 }}>HADES ARCHIVE</span>}</div>{adminMode && <div className="card-admin"><button className="tiny-btn" title="고정 전환" onClick={() => void toggleFlag(event, "pinned")}>{event.pinned ? "★" : "☆"}</button><button className="tiny-btn" title="중요 표시 전환" onClick={() => void toggleFlag(event, "important")}>{event.important ? "✦" : "◇"}</button><button className="tiny-btn" onClick={() => openEdit(event)}>수정</button><button className="tiny-btn" onClick={() => void deleteEvent(event)}>삭제</button></div>}</div></div>
+              </article>;
+            })}
           </div>
-
-          {/* =========================
-              생일
-              ========================= */}
-
-          <div className="border-t border-white/10 bg-black/10 p-5 sm:p-7">
-
-            <div className="mb-4">
-
-              <p className="text-[10px] font-black tracking-[0.28em] text-pink-300">
-                BIRTHDAY COUNTDOWN
-              </p>
-
-              <h3 className="mt-1 text-lg font-black">
-                HADES MEMBERS
-              </h3>
-
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-
-              {birthdayData.map(
-                (member) => (
-                  <div
-                    key={member.name}
-                    className={`rounded-2xl border p-3 ${member.color}`}
-                  >
-
-                    <div className="flex items-center gap-2">
-
-                      <span
-                        className={`h-2.5 w-2.5 rounded-full ${member.dot}`}
-                      />
-
-                      <span className="truncate text-xs font-black">
-                        {member.name}
-                      </span>
-
-                    </div>
-
-                    <div className="mt-3">
-
-                      {member.isToday ? (
-                        <div className="text-lg font-black">
-                          🎂 TODAY!
-                        </div>
-                      ) : (
-                        <>
-                          <span className="text-2xl font-black">
-                            D-{member.days}
-                          </span>
-
-                          <p className="mt-1 text-[10px] font-bold opacity-60">
-                            {member.month}.
-                            {String(
-                              member.day
-                            ).padStart(
-                              2,
-                              "0"
-                            )}
-                          </p>
-                        </>
-                      )}
-
-                    </div>
-
-                  </div>
-                )
-              )}
-
-            </div>
-          </div>
-        </div>
-
-        {/* =========================
-            STATS
-            ========================= */}
-
-        <div className="mb-7 grid grid-cols-3 gap-2 sm:gap-4">
-
-          <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-3 text-center sm:p-5">
-
-            <div className="text-[10px] font-black text-slate-500">
-              전체 기록
-            </div>
-
-            <div className="mt-1 text-xl font-black sm:text-3xl">
-              {events.length}
-            </div>
-
-          </div>
-
-          <div className="rounded-2xl border border-yellow-400/10 bg-yellow-400/[0.035] p-3 text-center sm:p-5">
-
-            <div className="text-[10px] font-black text-yellow-300">
-              📌 고정
-            </div>
-
-            <div className="mt-1 text-xl font-black text-yellow-300 sm:text-3xl">
-              {pinnedCount}
-            </div>
-
-          </div>
-
-          <div className="rounded-2xl border border-amber-400/10 bg-amber-400/[0.035] p-3 text-center sm:p-5">
-
-            <div className="text-[10px] font-black text-amber-300">
-              ⭐ 중요
-            </div>
-
-            <div className="mt-1 text-xl font-black text-amber-300 sm:text-3xl">
-              {importantCount}
-            </div>
-
-          </div>
-
-        </div>
-
-        {/* =========================
-            RECENT HIGHLIGHTS
-            ========================= */}
-
-        {pinnedEvents.length > 0 && (
-          <section className="mb-7">
-            <div className="mb-4 flex items-end justify-between gap-3 px-1">
-              <div>
-                <p className="text-[10px] font-black tracking-[0.28em] text-yellow-300">
-                  RECENT HIGHLIGHTS
-                </p>
-                <h2 className="mt-1 text-xl font-black sm:text-2xl">
-                  HADES의 주요 순간
-                </h2>
-              </div>
-              <span className="hidden text-[10px] font-bold text-slate-500 sm:block">
-                고정된 기록에서 자동으로 표시됩니다
-              </span>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {pinnedEvents.map((event) => (
-                <button
-                  key={event.id}
-                  type="button"
-                  onClick={() => scrollToEvent(event.id)}
-                  className="group overflow-hidden rounded-2xl border border-yellow-400/15 bg-[#080b18]/75 text-left backdrop-blur-xl transition duration-200 hover:-translate-y-0.5 hover:border-yellow-400/30 hover:bg-yellow-400/[0.06]"
-                >
-                  <div className="border-b border-white/10 px-4 py-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="rounded-lg border border-yellow-400/20 bg-yellow-400/10 px-2 py-1 text-[10px] font-black text-yellow-300">
-                        📌 HIGHLIGHT
-                      </span>
-                      <span className="text-[10px] font-bold text-slate-500">
-                        {event.date}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="p-4">
-                    <div className="mb-2 flex flex-wrap gap-1.5">
-                      <span className={`rounded-md border px-2 py-0.5 text-[10px] font-black ${categoryStyle[event.category]}`}>
-                        {event.category}
-                      </span>
-                      <span className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-bold text-slate-400">
-                        {event.activityType}
-                      </span>
-                    </div>
-
-                    <h3 className="break-words text-sm font-black leading-6 text-white transition group-hover:text-cyan-200">
-                      {event.title}
-                    </h3>
-
-                    {event.description && (
-                      <p className="mt-2 break-words text-xs leading-5 text-slate-500">
-                        {event.description.length > 70
-                          ? `${event.description.slice(0, 70)}...`
-                          : event.description}
-                      </p>
-                    )}
-
-                    <p className="mt-3 text-[10px] font-black text-cyan-400/70">
-                      기록으로 이동 →
-                    </p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* =========================
-            FORM
-            ========================= */}
-
-        {showForm && user && (
-          <div className="mb-8 overflow-hidden rounded-3xl border border-purple-400/20 bg-[#0b0a18]/90 backdrop-blur-xl">
-
-            <div className="border-b border-white/10 px-5 py-5 sm:px-7">
-
-              <p className="text-xs font-black tracking-widest text-cyan-300">
-                {editingId !== null
-                  ? "EDIT RECORD"
-                  : "NEW RECORD"}
-              </p>
-
-              <h2 className="mt-1 text-xl font-black sm:text-2xl">
-                {editingId !== null
-                  ? "기록 수정"
-                  : "새 기록 추가"}
-              </h2>
-
-            </div>
-
-            <div className="p-5 sm:p-7">
-
-              <div className="grid gap-4 sm:grid-cols-2">
-
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) =>
-                    setDate(
-                      e.target.value
-                    )
-                  }
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none"
-                />
-
-                <input
-                  type="time"
-                  value={time}
-                  onChange={(e) =>
-                    setTime(
-                      e.target.value
-                    )
-                  }
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none"
-                />
-
-              </div>
-
-              <input
-                type="text"
-                placeholder="기록 제목"
-                value={title}
-                onChange={(e) =>
-                  setTitle(
-                    e.target.value
-                  )
-                }
-                className="mt-4 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none"
-              />
-
-              <textarea
-                placeholder="기록 내용을 입력해주세요..."
-                value={description}
-                onChange={(e) =>
-                  setDescription(
-                    e.target.value
-                  )
-                }
-                rows={5}
-                className="mt-4 w-full resize-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm leading-7 outline-none"
-              />
-
-              <div className="mt-5">
-
-                <label className="mb-2 block text-xs font-black text-cyan-300">
-                  카테고리
-                </label>
-
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-
-                  {categories.map(
-                    (item) => (
-                      <button
-                        key={item}
-                        type="button"
-                        onClick={() =>
-                          setCategory(
-                            item
-                          )
-                        }
-                        className={`rounded-xl border px-4 py-3 text-sm font-black ${
-                          category === item
-                            ? categoryStyle[
-                                item
-                              ]
-                            : "border-white/10 bg-white/5 text-slate-400"
-                        }`}
-                      >
-                        {item}
-                      </button>
-                    )
-                  )}
-
-                </div>
-              </div>
-
-              <div className="mt-5">
-
-                <label className="mb-2 block text-xs font-black text-cyan-300">
-                  활동 형태
-                </label>
-
-                <div className="grid grid-cols-2 gap-2">
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setActivityType(
-                        "단체"
-                      )
-                    }
-                    className={`rounded-xl border px-4 py-3 text-sm font-black ${
-                      activityType ===
-                      "단체"
-                        ? "border-cyan-400/30 bg-cyan-400/10 text-cyan-300"
-                        : "border-white/10 bg-white/5 text-slate-400"
-                    }`}
-                  >
-                    👥 단체
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setActivityType(
-                        "개인"
-                      )
-                    }
-                    className={`rounded-xl border px-4 py-3 text-sm font-black ${
-                      activityType ===
-                      "개인"
-                        ? "border-pink-400/30 bg-pink-400/10 text-pink-300"
-                        : "border-white/10 bg-white/5 text-slate-400"
-                    }`}
-                  >
-                    👤 개인
-                  </button>
-
-                </div>
-              </div>
-
-              {/* 이미지 */}
-
-              <div className="mt-5">
-
-                <label className="mb-2 block text-xs font-black text-cyan-300">
-                  이미지 첨부
-                </label>
-
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={async (e) => {
-                    const file =
-                      e.target.files?.[0];
-
-                    if (!file) return;
-
-                    try {
-                      const blob =
-                        await compressImage(
-                          file
-                        );
-
-                      setPendingImageBlob(
-                        blob
-                      );
-
-                      setImagePreview(
-                        URL.createObjectURL(
-                          blob
-                        )
-                      );
-                    } catch {
-                      alert(
-                        "이미지 처리 중 문제가 발생했습니다."
-                      );
-                    }
-
-                    e.target.value =
-                      "";
-                  }}
-                  className="w-full rounded-xl border border-dashed border-white/15 bg-white/5 px-4 py-3 text-xs text-slate-400"
-                />
-
-              </div>
-
-              <input
-                type="url"
-                placeholder="유튜브 링크 (선택)"
-                value={youtubeUrl}
-                onChange={(e) =>
-                  setYoutubeUrl(
-                    e.target.value
-                  )
-                }
-                className="mt-4 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none"
-              />
-
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-
-                <label className="flex items-center gap-3 rounded-xl border border-amber-400/10 bg-amber-400/5 px-4 py-3 text-sm font-bold text-amber-300">
-
-                  <input
-                    type="checkbox"
-                    checked={important}
-                    onChange={(e) =>
-                      setImportant(
-                        e.target.checked
-                      )
-                    }
-                  />
-
-                  ⭐ 중요 기록
-
-                </label>
-
-                <label className="flex items-center gap-3 rounded-xl border border-yellow-400/10 bg-yellow-400/5 px-4 py-3 text-sm font-bold text-yellow-300">
-
-                  <input
-                    type="checkbox"
-                    checked={pinned}
-                    onChange={(e) =>
-                      setPinned(
-                        e.target.checked
-                      )
-                    }
-                  />
-
-                  📌 상단 고정
-
-                </label>
-
-              </div>
-
-              {imagePreview && (
-                <div className="mt-5 overflow-hidden rounded-2xl border border-white/10 bg-black/30">
-
-                  <img
-                    src={imagePreview}
-                    alt="미리보기"
-                    className="max-h-[650px] w-full object-contain"
-                  />
-
-                  <div className="border-t border-white/10 p-3">
-
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (
-                          editingId !==
-                          null
-                        ) {
-                          const event =
-                            events.find(
-                              (item) =>
-                                item.id ===
-                                editingId
-                            );
-
-                          if (event) {
-                            await deleteEventImage(
-                              event
-                            );
-                          }
-                        }
-
-                        setImagePreview(
-                          ""
-                        );
-
-                        setPendingImageBlob(
-                          null
-                        );
-
-                        setOldImageKey(
-                          undefined
-                        );
-                      }}
-                      className="w-full rounded-xl border border-pink-400/20 bg-pink-400/10 px-4 py-2.5 text-xs font-bold text-pink-300"
-                    >
-                      🗑️ 사진 삭제
-                    </button>
-
-                  </div>
-                </div>
-              )}
-
-              <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-
-                <button
-                  type="button"
-                  onClick={addEvent}
-                  className="rounded-xl bg-gradient-to-r from-fuchsia-500 via-purple-500 to-cyan-500 px-6 py-3 text-sm font-black"
-                >
-                  {editingId !==
-                  null
-                    ? "수정 저장"
-                    : "기록 저장"}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-bold text-slate-300"
-                >
-                  취소
-                </button>
-
-              </div>
-
-            </div>
-          </div>
-        )}
-
-        {/* =========================
-            SEARCH
-            ========================= */}
-
-        <div className="mb-4">
-
-          <input
-            type="text"
-            placeholder="🔍 타임라인 검색..."
-            value={search}
-            onChange={(e) =>
-              setSearch(
-                e.target.value
-              )
-            }
-            className="w-full rounded-2xl border border-white/10 bg-white/[0.045] px-5 py-4 text-sm outline-none backdrop-blur-xl"
-          />
-
-        </div>
-
-        {/* =========================
-            FILTER
-            ========================= */}
-
-        <div className="mb-8 rounded-3xl border border-white/10 bg-white/[0.045] p-4 backdrop-blur-xl">
-
-          <div className="flex flex-wrap gap-2">
-
-            {(
-              [
-                ["all", "전체"],
-                ["pinned", "📌 고정"],
-                [
-                  "important",
-                  "⭐ 중요",
-                ],
-                ["단체", "👥 단체"],
-                ["개인", "👤 개인"],
-              ] as [
-                Filter,
-                string
-              ][]
-            ).map(
-              ([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() =>
-                    setFilter(
-                      value
-                    )
-                  }
-                  className={`rounded-xl px-4 py-2 text-xs font-black ${
-                    filter === value
-                      ? "bg-white text-black"
-                      : "bg-white/5 text-slate-400"
-                  }`}
-                >
-                  {label}
-                </button>
-              )
-            )}
-
-            {categories.map(
-              (item) => (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() =>
-                    setFilter(
-                      item
-                    )
-                  }
-                  className={`rounded-xl border px-4 py-2 text-xs font-black ${
-                    filter === item
-                      ? categoryStyle[
-                          item
-                        ]
-                      : "border-transparent bg-white/5 text-slate-400"
-                  }`}
-                >
-                  {item}
-                </button>
-              )
-            )}
-
-          </div>
-
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-3">
-
-            <div className="flex items-center gap-2">
-
-              <span className="text-xs font-bold text-slate-500">
-                정렬
-              </span>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setSortOrder(
-                    "newest"
-                  )
-                }
-                className={`rounded-xl px-3 py-2 text-xs font-black ${
-                  sortOrder ===
-                  "newest"
-                    ? "bg-white text-black"
-                    : "bg-white/5 text-slate-400"
-                }`}
-              >
-                최신순
-              </button>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setSortOrder(
-                    "oldest"
-                  )
-                }
-                className={`rounded-xl px-3 py-2 text-xs font-black ${
-                  sortOrder ===
-                  "oldest"
-                    ? "bg-white text-black"
-                    : "bg-white/5 text-slate-400"
-                }`}
-              >
-                오래된순
-              </button>
-
-            </div>
-
-            <div className="text-xs font-semibold text-slate-500">
-              {
-                filteredEvents.length
-              }
-              개의 기록
-            </div>
-
-          </div>
-        </div>
-
-        {/* =========================
-            TIMELINE
-            ========================= */}
-
-        {loading ? (
-          <div className="rounded-3xl border border-white/10 bg-white/[0.045] px-5 py-16 text-center">
-            <div className="text-3xl">⏳</div>
-            <p className="mt-4 text-sm font-bold text-slate-400">
-              기록을 불러오는 중...
-            </p>
-          </div>
-        ) : filteredEvents.length === 0 ? (
-          <div className="rounded-3xl border border-white/10 bg-white/[0.045] px-5 py-14 text-center">
-            <div className="text-5xl">🔎</div>
-            <h3 className="mt-4 text-lg font-black">기록을 찾을 수 없어요</h3>
-            <p className="mt-2 text-sm text-slate-500">새로운 기록을 추가해보세요.</p>
-          </div>
-        ) : (
-          <>
-            <section className="mb-6 rounded-3xl border border-white/10 bg-white/[0.045] p-4 backdrop-blur-xl">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-black tracking-[0.28em] text-cyan-300">
-                    TIMELINE NAVIGATION
-                  </p>
-                  <p className="mt-1 text-xs font-bold text-slate-500">
-                    원하는 연도와 월로 바로 이동하세요
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setExpandedMonths(new Set(timelineGroups.map((group) => group.key)));
-                  }}
-                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[11px] font-black text-slate-300"
-                >
-                  전체 펼치기
-                </button>
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                {timelineYears.map((year) => {
-                  const yearGroups = timelineGroups.filter((group) => group.key.startsWith(year));
-                  const allExpanded = yearGroups.every((group) => expandedMonths.has(group.key));
-                  return (
-                    <div key={year} className="flex flex-wrap items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => toggleYear(year)}
-                        className={`rounded-xl px-3 py-2 text-xs font-black ${
-                          allExpanded ? "bg-white text-black" : "bg-white/5 text-slate-300"
-                        }`}
-                      >
-                        {year}
-                      </button>
-                      {yearGroups.map((group) => (
-                        <button
-                          key={group.key}
-                          type="button"
-                          onClick={() => jumpToMonth(group.key)}
-                          className={`rounded-xl border px-2.5 py-2 text-[11px] font-bold transition ${
-                            expandedMonths.has(group.key)
-                              ? "border-cyan-400/30 bg-cyan-400/10 text-cyan-300"
-                              : "border-white/10 bg-white/5 text-slate-500"
-                          }`}
-                        >
-                          {Number(group.key.slice(5, 7))}월
-                        </button>
-                      ))}
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-
-            <section className="relative">
-              <div className="absolute bottom-5 left-[7px] top-5 w-px bg-gradient-to-b from-pink-400 via-indigo-400 via-lime-400 via-purple-400 to-yellow-300" />
-
-              <div className="space-y-5 sm:space-y-6">
-                {timelineGroups.map((group) => {
-                  const isExpanded = expandedMonths.has(group.key);
-                  const firstEvent = group.events[0];
-
-                  return (
-                    <div key={group.key} id={`month-${group.key}`} className="scroll-mt-28">
-                      <button
-                        type="button"
-                        onClick={() => toggleMonth(group.key)}
-                        className="relative z-10 mb-3 flex w-full items-center justify-between rounded-2xl border border-cyan-400/15 bg-[#080b18]/80 px-4 py-3 text-left backdrop-blur-xl transition hover:border-cyan-400/30 hover:bg-cyan-400/[0.05] sm:px-5"
-                      >
-                        <div className="flex min-w-0 items-center gap-3">
-                          <span className="text-lg">{isExpanded ? "▼" : "▶"}</span>
-                          <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1.5 text-sm font-black text-cyan-300">
-                            📅 {group.label}
-                          </span>
-                          <span className="text-[11px] font-bold text-slate-500">
-                            {group.events.length}개 기록
-                          </span>
-                        </div>
-                        <span className="hidden text-[10px] font-bold text-slate-600 sm:block">
-                          {firstEvent?.date}
-                        </span>
-                      </button>
-
-                      {isExpanded && (
-                        <div className="space-y-8 sm:space-y-9">
-                          {group.events.map((event, index) => {
-                            const youtubeId = getYoutubeId(event.youtubeUrl);
-                            const thumbnail = getYoutubeThumbnail(event.youtubeUrl);
-
-                            return (
-                              <div key={event.id} id={`event-${event.id}`}>
-                                <article className="relative pl-6 sm:pl-9">
-                                  <div
-                                    className={`absolute left-[-1px] top-2 h-4 w-4 rounded-full border-4 border-[#030712] shadow-[0_0_12px_currentColor] ${
-                                      [
-                                        "bg-pink-300 text-pink-300",
-                                        "bg-indigo-300 text-indigo-300",
-                                        "bg-purple-400 text-purple-400",
-                                        "bg-lime-400 text-lime-400",
-                                        "bg-yellow-300 text-yellow-300",
-                                      ][index % 5]
-                                    }`}
-                                  />
-
-                                  <div className="mb-4 flex flex-wrap items-center gap-1.5 sm:mb-3 sm:gap-2">
-                                    <span className="rounded-lg border border-cyan-400/15 bg-cyan-400/10 px-2 py-1 text-xs font-black text-cyan-300">
-                                      {event.date}
-                                    </span>
-                                    <span className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs font-bold text-slate-300">
-                                      🕐 {event.time}
-                                    </span>
-                                    <span className={`rounded-lg border px-2.5 py-1 text-xs font-black ${categoryStyle[event.category]}`}>
-                                      {event.category}
-                                    </span>
-                                    <span className={`rounded-lg border px-2 py-1 text-xs font-black ${event.activityType === "개인" ? "border-pink-400/20 bg-pink-400/10 text-pink-300" : "border-cyan-400/20 bg-cyan-400/10 text-cyan-300"}`}>
-                                      {event.activityType === "개인" ? "👤 개인" : "👥 단체"}
-                                    </span>
-                                    {event.pinned && (
-                                      <span className="rounded-lg border border-yellow-400/20 bg-yellow-400/10 px-2.5 py-1 text-xs font-black text-yellow-300">📌 고정</span>
-                                    )}
-                                    {event.important && (
-                                      <span className="rounded-lg border border-amber-400/20 bg-amber-400/10 px-2.5 py-1 text-xs font-black text-amber-300">⭐ 중요</span>
-                                    )}
-                                  </div>
-
-                                  <div className={`overflow-hidden rounded-3xl border bg-[#080b18]/80 transition-all duration-500 ${highlightedEventId === event.id ? "border-cyan-300/70 ring-2 ring-cyan-400/40 shadow-[0_0_35px_rgba(34,211,238,0.22)]" : event.important ? "border-amber-400/30" : "border-white/10"}`}>
-                                    <div className="p-4 sm:p-6">
-                                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                                        <h2 className="min-w-0 break-words text-[17px] font-black leading-[1.6] tracking-[-0.01em] sm:text-xl sm:leading-snug">
-                                          {event.title}
-                                        </h2>
-                                        {user && (
-                                          <div className="flex shrink-0 flex-wrap gap-2">
-                                            <button type="button" onClick={() => togglePinned(event)} className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${event.pinned ? "border-yellow-400/20 bg-yellow-400/10 text-yellow-300" : "border-white/10 bg-white/5 text-slate-500"}`}>📌</button>
-                                            <button type="button" onClick={() => toggleImportant(event)} className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${event.important ? "border-amber-400/20 bg-amber-400/10 text-amber-300" : "border-white/10 bg-white/5 text-slate-500"}`}>⭐</button>
-                                            <button type="button" onClick={() => startEdit(event)} className="rounded-lg border border-cyan-400/20 bg-cyan-400/10 px-3 py-1.5 text-xs font-bold text-cyan-300">수정</button>
-                                            <button type="button" onClick={() => deleteEvent(event)} className="rounded-lg border border-pink-400/20 bg-pink-400/10 px-3 py-1.5 text-xs font-bold text-pink-300">삭제</button>
-                                          </div>
-                                        )}
-                                      </div>
-                                      <div className="mt-5 h-px bg-gradient-to-r from-fuchsia-400/30 via-cyan-400/20 to-transparent" />
-                                      {event.description && (
-                                        <p className="mt-5 whitespace-pre-wrap break-words text-[14px] leading-[1.8] text-slate-300 sm:mt-4 sm:text-[15px] sm:leading-8">{event.description}</p>
-                                      )}
-                                      {event.imageUrl && (
-                                        <div className="mt-5 overflow-hidden rounded-2xl border border-white/10 bg-black/40">
-                                          <img src={event.imageUrl} alt={event.title} loading="lazy" className="block max-h-[650px] w-full object-contain" />
-                                          {user && (
-                                            <div className="border-t border-white/10 p-3">
-                                              <button type="button" onClick={() => deleteEventImage(event)} className="w-full rounded-xl border border-pink-400/20 bg-pink-400/10 px-4 py-2.5 text-xs font-bold text-pink-300">🗑️ 사진 삭제</button>
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
-                                      {youtubeId && thumbnail && (
-                                        <div className="mt-5 overflow-hidden rounded-2xl bg-black">
-                                          {playingVideoId === youtubeId ? (
-                                            <iframe src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&playsinline=1`} title={event.title} className="aspect-video w-full" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen />
-                                          ) : (
-                                            <button type="button" onClick={() => setPlayingVideoId(youtubeId)} className="group relative block w-full">
-                                              <img src={thumbnail} alt={`${event.title} 유튜브 썸네일`} loading="lazy" className="aspect-video w-full object-cover" />
-                                              <div className="absolute inset-0 flex items-center justify-center bg-black/10">
-                                                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-white shadow-2xl sm:h-20 sm:w-20">
-                                                  <span className="ml-1 text-2xl sm:text-3xl">▶</span>
-                                                </div>
-                                              </div>
-                                            </button>
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                </article>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          </>
-        )}
-
-        {/* =========================
-            FOOTER
-            ========================= */}
-
-        <footer className="mt-14 border-t border-white/10 py-8 text-center">
-
-          <p className="text-xs font-black tracking-[0.25em] text-slate-500">
-            FROM HELL TO THE STAGE
-          </p>
-
-          <p className="mt-2 text-[11px] leading-6 text-slate-600">
-  본 페이지는 HADES의 활동과 순간들을 보기 편리하게 정리하기 위해 제작된 비공식 팬페이지입니다.
-  <br />
-  어떠한 수익 창출이나 상업적 목적 없이, HADES를 응원하고 기록하기 위해 운영됩니다.
-</p>
-        </footer>
-
+          <footer className="footer"><span><strong>HADES TIMELINE</strong> · FROM HELL TO THE STAGE</span><span>EST. 2025.09.05 · {daysActive.toLocaleString("ko-KR")} DAYS</span></footer>
+        </section>
       </div>
 
-      {/* =========================
-          TOP BUTTON
-          ========================= */}
+      {loginOpen && <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) setLoginOpen(false); }}><section className="modal login-modal"><div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 12 }}><div><div className="eyebrow" style={{ marginBottom: 9 }}>ADMIN ACCESS</div><h2>관리자 로그인</h2></div><button className="close-btn" onClick={() => setLoginOpen(false)}>×</button></div><p>기록을 추가하거나 수정하려면 관리자 계정으로 로그인해 주세요.</p><form className="login-fields" onSubmit={handleLogin}><label>이메일<input className="form-input" type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} required autoComplete="username" /></label><label>비밀번호<input className="form-input" type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} required autoComplete="current-password" /></label>{loginError && <div className="login-error">{loginError}</div>}<button className="primary-btn" type="submit">로그인</button></form><div className="small-note">Supabase Auth에 등록된 기존 관리자 계정을 사용합니다.</div></section></div>}
 
-      {showTopButton && (
-        <button
-          type="button"
-          onClick={() =>
-            window.scrollTo({
-              top: 0,
-              behavior: "smooth",
-            })
-          }
-          className="fixed bottom-5 right-5 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-[#0b1020]/90 text-xl font-black shadow-2xl sm:bottom-7 sm:right-7 sm:h-14 sm:w-14"
-        >
-          ↑
-        </button>
-      )}
-
-      {/* =========================
-          FIREWORK CSS
-          ========================= */}
-
-      <style jsx>{`
-        .firework {
-          position: absolute;
-          width: 8px;
-          height: 8px;
-          border-radius: 9999px;
-          animation: firework-burst 2.4s ease-out infinite;
-        }
-
-        .firework span {
-          position: absolute;
-          left: 50%;
-          top: 50%;
-          width: 3px;
-          height: 75px;
-          border-radius: 9999px;
-          transform-origin: 50% 0;
-          background: linear-gradient(
-            to bottom,
-            rgba(255, 255, 255, 1),
-            rgba(168, 85, 247, 0)
-          );
-        }
-
-        .firework span:nth-child(1) {
-          transform: translate(-50%, 0)
-            rotate(0deg);
-        }
-
-        .firework span:nth-child(2) {
-          transform: translate(-50%, 0)
-            rotate(30deg);
-        }
-
-        .firework span:nth-child(3) {
-          transform: translate(-50%, 0)
-            rotate(60deg);
-        }
-
-        .firework span:nth-child(4) {
-          transform: translate(-50%, 0)
-            rotate(90deg);
-        }
-
-        .firework span:nth-child(5) {
-          transform: translate(-50%, 0)
-            rotate(120deg);
-        }
-
-        .firework span:nth-child(6) {
-          transform: translate(-50%, 0)
-            rotate(150deg);
-        }
-
-        .firework span:nth-child(7) {
-          transform: translate(-50%, 0)
-            rotate(180deg);
-        }
-
-        .firework span:nth-child(8) {
-          transform: translate(-50%, 0)
-            rotate(210deg);
-        }
-
-        .firework span:nth-child(9) {
-          transform: translate(-50%, 0)
-            rotate(240deg);
-        }
-
-        .firework span:nth-child(10) {
-          transform: translate(-50%, 0)
-            rotate(270deg);
-        }
-
-        .firework span:nth-child(11) {
-          transform: translate(-50%, 0)
-            rotate(300deg);
-        }
-
-        .firework span:nth-child(12) {
-          transform: translate(-50%, 0)
-            rotate(330deg);
-        }
-
-        .firework-lime span {
-          background: #a3e635;
-          box-shadow:
-            0 0 8px rgba(163, 230, 53, 1),
-            0 0 18px rgba(163, 230, 53, 0.85),
-            0 0 34px rgba(163, 230, 53, 0.55);
-        }
-
-        .dino-anniversary-stage {
-          z-index: 2;
-          width: min(90vw, 440px);
-          animation: dino-stage-rise 1.15s cubic-bezier(0.2, 1.4, 0.4, 1) both;
-        }
-
-        .dino-speech-bubble {
-          position: relative;
-          font-size: clamp(13px, 2.5vw, 19px);
-          letter-spacing: 0.02em;
-          animation: dino-bubble-pop 0.55s 0.8s cubic-bezier(0.2, 1.5, 0.4, 1) both, dino-bubble-float 2.2s 1.4s ease-in-out infinite;
-        }
-
-        .dino-bubble-tail {
-          position: absolute;
-          left: calc(50% - 8px);
-          bottom: -9px;
-          width: 15px;
-          height: 15px;
-          background: #14210a;
-          border-right: 2px solid rgba(190, 242, 100, 0.95);
-          border-bottom: 2px solid rgba(190, 242, 100, 0.95);
-          transform: rotate(45deg);
-        }
-
-        .dino-character {
-          position: relative;
-          z-index: 1;
-          font-size: clamp(100px, 19vw, 170px);
-          line-height: 1;
-          filter: drop-shadow(0 0 10px rgba(163, 230, 53, 0.95)) drop-shadow(0 0 28px rgba(132, 204, 22, 0.8));
-          transform-origin: 50% 100%;
-          animation: dino-character-bounce 1.05s 0.45s ease-in-out both, dino-idle-bob 1.8s 1.55s ease-in-out infinite;
-        }
-
-        .dino-ground-glow {
-          width: 150px;
-          height: 18px;
-          margin-top: -5px;
-          border-radius: 50%;
-          background: rgba(163, 230, 53, 0.55);
-          filter: blur(12px);
-          animation: dino-ground-pulse 1.5s ease-in-out infinite;
-        }
-
-        .dino-footprints {
-          margin-top: 2px;
-          color: #bef264;
-          font-size: 18px;
-          letter-spacing: 0.2em;
-          opacity: 0.9;
-          text-shadow: 0 0 12px rgba(163, 230, 53, 0.9);
-          animation: dino-footsteps 1.4s ease-in-out infinite;
-        }
-
-        @keyframes dino-stage-rise {
-          0% { opacity: 0; transform: translate(-50%, 180px) scale(0.45); }
-          65% { opacity: 1; transform: translate(-50%, -16px) scale(1.08); }
-          82% { transform: translate(-50%, 7px) scale(0.97); }
-          100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
-        }
-
-        @keyframes dino-bubble-pop {
-          0% { opacity: 0; transform: scale(0.2) rotate(-8deg); }
-          75% { opacity: 1; transform: scale(1.12) rotate(3deg); }
-          100% { opacity: 1; transform: scale(1) rotate(0); }
-        }
-
-        @keyframes dino-bubble-float {
-          0%, 100% { translate: 0 0; }
-          50% { translate: 0 -5px; }
-        }
-
-        @keyframes dino-character-bounce {
-          0% { transform: scale(0.2) rotate(-22deg); }
-          60% { transform: scale(1.18) rotate(8deg); }
-          78% { transform: scale(0.92) rotate(-4deg); }
-          100% { transform: scale(1) rotate(0); }
-        }
-
-        @keyframes dino-idle-bob {
-          0%, 100% { translate: 0 0; rotate: -2deg; }
-          50% { translate: 0 -10px; rotate: 2deg; }
-        }
-
-        @keyframes dino-ground-pulse {
-          0%, 100% { opacity: 0.45; transform: scaleX(0.8); }
-          50% { opacity: 0.95; transform: scaleX(1.15); }
-        }
-
-        @keyframes dino-footsteps {
-          0%, 100% { opacity: 0.45; transform: translateY(0); }
-          50% { opacity: 1; transform: translateY(-3px); }
-        }
-
-        .firework-1 {
-          left: 18%;
-          top: 25%;
-          animation-delay: 0s;
-        }
-
-        .firework-2 {
-          right: 18%;
-          top: 35%;
-          animation-delay: 0.8s;
-        }
-
-        .firework-3 {
-          left: 50%;
-          top: 18%;
-          animation-delay: 1.6s;
-        }
-
-        @keyframes firework-burst {
-          0% {
-            opacity: 0;
-            transform: scale(0.15);
-          }
-
-          12% {
-            opacity: 1;
-          }
-
-          55% {
-            opacity: 1;
-            transform: scale(1);
-          }
-
-          100% {
-            opacity: 0;
-            transform: scale(1.35);
-          }
-        }
-
-        @media (max-width: 640px) {
-          .firework span {
-            width: 2px;
-            height: 48px;
-          }
-
-          .firework-1 {
-            left: 12%;
-            top: 22%;
-          }
-
-          .firework-2 {
-            right: 12%;
-            top: 32%;
-          }
-
-          .firework-3 {
-            left: 50%;
-            top: 16%;
-          }
-        }
-      .hades-since-neon {
-        animation: hadesNeonGlow 1.4s ease-in-out infinite;
-        box-shadow:
-          0 0 10px rgba(236, 72, 153, 0.95),
-          0 0 24px rgba(236, 72, 153, 0.78),
-          0 0 48px rgba(236, 72, 153, 0.48);
-      }
-
-      .hades-neon-spark {
-        animation: hadesNeonSpark 0.85s steps(2, end) infinite;
-      }
-
-      @keyframes hadesNeonGlow {
-        0%, 100% {
-          box-shadow:
-            0 0 10px rgba(236, 72, 153, 0.85),
-            0 0 24px rgba(236, 72, 153, 0.65),
-            0 0 48px rgba(236, 72, 153, 0.35);
-        }
-        50% {
-          box-shadow:
-            0 0 16px rgba(236, 72, 153, 1),
-            0 0 34px rgba(236, 72, 153, 0.9),
-            0 0 65px rgba(236, 72, 153, 0.58);
-        }
-      }
-
-      @keyframes hadesNeonSpark {
-        0%, 100% {
-          opacity: 0.35;
-          filter: brightness(1);
-        }
-        45% {
-          opacity: 1;
-          filter: brightness(1.8);
-        }
-        55% {
-          opacity: 0.5;
-          filter: brightness(1.2);
-        }
-      }
-
-      `}</style>
-
+      {editorOpen && <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget && !saving) setEditorOpen(false); }}><section className="modal"><div className="modal-head"><h2>{editingId === null ? "새 타임라인 기록" : "타임라인 기록 수정"}</h2><button className="close-btn" onClick={() => setEditorOpen(false)} disabled={saving}>×</button></div><form className="modal-form" onSubmit={saveEvent}>
+        <div className="field"><label>날짜 *</label><input className="form-input" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required min="2025-09-05" /></div>
+        <div className="field"><label>시간</label><input className="form-input" type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} /></div>
+        <div className="field full"><label>제목 *</label><input className="form-input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required placeholder="활동 제목을 입력하세요" /></div>
+        <div className="field"><label>카테고리</label><input className="form-input" list="timeline-categories" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} required /><datalist id="timeline-categories">{categories.filter((item) => item !== "전체").map((item) => <option key={item} value={item} />)}</datalist></div>
+        <div className="field"><label>멤버 / 활동 유형</label><input className="form-input" value={form.activityType} onChange={(e) => setForm({ ...form, activityType: e.target.value })} placeholder="예: 연초록, 단체 활동" /></div>
+        <div className="field full"><label>내용</label><textarea className="form-textarea" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="활동에 대한 설명을 적어주세요." /></div>
+        <div className="field full"><label>사진 업로드</label><input className="form-input" type="file" accept="image/*" onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)} />{form.imageUrl && !photoFile && <span className="small-note">기존 사진이 연결되어 있어요. 새 사진을 선택하지 않으면 유지됩니다.</span>}</div>
+        <div className="field full"><label>또는 사진 URL</label><input className="form-input" type="url" value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} placeholder="https://..." /></div>
+        <div className="field full"><label>YouTube URL</label><input className="form-input" type="url" value={form.youtubeUrl} onChange={(e) => setForm({ ...form, youtubeUrl: e.target.value })} placeholder="https://www.youtube.com/watch?v=..." /></div>
+        <div className="field full form-checks"><label><input type="checkbox" checked={form.important} onChange={(e) => setForm({ ...form, important: e.target.checked })} /> 중요 기록</label><label><input type="checkbox" checked={form.pinned} onChange={(e) => setForm({ ...form, pinned: e.target.checked })} /> 상단 고정</label></div>
+        <div className="modal-actions"><button className="ghost-btn" type="button" onClick={() => setEditorOpen(false)} disabled={saving}>취소</button><button className="primary-btn" type="submit" disabled={saving}>{saving ? "저장 중..." : editingId === null ? "기록 저장" : "수정 내용 저장"}</button></div>
+      </form></section></div>}
     </main>
   );
 }
