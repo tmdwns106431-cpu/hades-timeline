@@ -113,6 +113,22 @@ function youtubeId(url?: string | null) {
   return null;
 }
 
+function getKoreaDateString(date: Date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function dateStringToUtcDay(date: string) {
+  const [year, month, day] = date.split("-").map(Number);
+  return Math.floor(Date.UTC(year, month - 1, day) / 86400000);
+}
+
 function formatDate(date: string) {
   if (!date) return "날짜 미정";
   const [year, month, day] = date.split("-").map(Number);
@@ -156,14 +172,17 @@ export default function Page() {
   const [memberFilter, setMemberFilter] = useState("전체");
   const [sortOrder, setSortOrder] = useState("latest");
   const [selectedDate, setSelectedDate] = useState("");
-  const [calendarDate, setCalendarDate] = useState(() => { const now = new Date(); return new Date(now.getFullYear(), now.getMonth(), 1); });
+  const [calendarDate, setCalendarDate] = useState(() => {
+    const [year, month] = getKoreaDateString().split("-").map(Number);
+    return new Date(year, month - 1, 1);
+  });
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [showPinnedOnly, setShowPinnedOnly] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [form, setForm] = useState({
-    date: new Date().toISOString().slice(0, 10),
+    date: getKoreaDateString(),
     time: "",
     title: "",
     description: "",
@@ -285,18 +304,15 @@ export default function Page() {
     count: events.filter((event) => getMember(event) === name).length,
     color: MEMBER_COLORS[name],
   }));
-  const yearStart = new Date("2025-09-05T00:00:00");
-  const daysActive = Math.max(0, Math.floor((Date.now() - yearStart.getTime()) / 86400000));
-  const birthdayDate = new Date(2026, 10, 11);
-  const todayLocal = new Date();
-  todayLocal.setHours(0, 0, 0, 0);
-  const birthdayDaysLeft = Math.ceil((birthdayDate.getTime() - todayLocal.getTime()) / 86400000);
+  const todayKorea = getKoreaDateString();
+  const daysActive = Math.max(0, dateStringToUtcDay(todayKorea) - dateStringToUtcDay("2025-09-05"));
+  const birthdayDaysLeft = dateStringToUtcDay("2026-11-11") - dateStringToUtcDay(todayKorea);
   const resetFilters = () => {
     setQuery(""); setCategoryFilter("전체"); setMemberFilter("전체"); setSelectedDate(""); setShowPinnedOnly(false);
   };
   const openNew = () => {
     setEditingId(null); setPhotoFile(null);
-    setForm({ date: selectedDate || new Date().toISOString().slice(0, 10), time: "", title: "", description: "", imageUrl: "", youtubeUrl: "", category: "개인", activityType: "", important: false, pinned: false });
+    setForm({ date: selectedDate || getKoreaDateString(), time: "", title: "", description: "", imageUrl: "", youtubeUrl: "", category: "개인", activityType: "", important: false, pinned: false });
     setEditorOpen(true);
   };
   const openEdit = (event: TimelineEvent) => {
@@ -442,7 +458,7 @@ export default function Page() {
             <div className="calendar-grid">{calendarCells.map((date, index) => {
               if (!date) return <span key={`blank-${index}`} />;
               const records = monthEvents.filter((event) => event.date === date);
-              const today = date === new Date().toISOString().slice(0, 10);
+              const today = date === todayKorea;
               const selected = selectedDate === date;
               const colors = Array.from(new Set(records.map((event) => MEMBER_COLORS[getMember(event)]).filter(Boolean))).slice(0, 3);
               return <button key={date} className={`day-btn ${selected ? "selected" : ""} ${today ? "today" : ""}`} title={`${date} · 기록 ${records.length}개`} onClick={() => setSelectedDate(selected ? "" : date)}><span>{Number(date.slice(-2))}</span><span className="day-dots">{colors.map((color, i) => <i key={i} className="day-dot" style={{ background: color }} />)}</span></button>;
